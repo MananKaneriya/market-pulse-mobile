@@ -1,13 +1,52 @@
 import { useNavigate, useParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { DUMMY_NEWS_ARTICLES } from '@/lib/dummyData';
-import { ArrowLeft, Share2, Bookmark } from 'lucide-react';
+import { ArrowLeft, Share2, Bookmark, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const Article = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const article = DUMMY_NEWS_ARTICLES.find(a => a.id === id);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+
+  useEffect(() => {
+    const generateSummary = async () => {
+      if (!article) return;
+      
+      setLoadingSummary(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('generate-summary', {
+          body: { 
+            title: article.title,
+            content: article.content || article.summary 
+          }
+        });
+
+        if (error) throw error;
+        
+        if (data?.summary) {
+          setAiSummary(data.summary);
+        }
+      } catch (error) {
+        console.error('Error generating summary:', error);
+        toast({
+          title: 'Could not generate AI summary',
+          description: 'Showing original summary instead',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoadingSummary(false);
+      }
+    };
+
+    generateSummary();
+  }, [article, toast]);
 
   if (!article) {
     return (
@@ -59,8 +98,13 @@ const Article = () => {
         </div>
 
         <Card className="p-6 mb-6 bg-muted/50">
-          <h2 className="font-semibold mb-2">AI Summary</h2>
-          <p className="text-muted-foreground">{article.summary}</p>
+          <div className="flex items-center gap-2 mb-2">
+            <h2 className="font-semibold">AI Summary</h2>
+            {loadingSummary && <Loader2 className="w-4 h-4 animate-spin text-accent" />}
+          </div>
+          <p className="text-muted-foreground">
+            {loadingSummary ? 'Generating AI-powered summary...' : (aiSummary || article.summary)}
+          </p>
         </Card>
 
         <div className="prose prose-sm max-w-none">
