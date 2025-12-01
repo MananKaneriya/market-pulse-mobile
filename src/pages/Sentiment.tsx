@@ -83,16 +83,35 @@ const Sentiment = () => {
     }
   }, [selectedStock, user]);
 
-  const tweets = DUMMY_TWEETS.slice(0, 3);
+  const tweets = DUMMY_TWEETS;
 
-  // Calculate sentiment percentages from AI results
-  const sentimentData = sentimentResults.length > 0 
+  // Generate randomized sentiment percentages for each stock
+  const generateRandomSentiment = (stockSymbol: string) => {
+    // Use stock symbol as seed for consistent but unique percentages per stock
+    const seed = stockSymbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const random = (n: number) => {
+      const x = Math.sin(seed + n) * 10000;
+      return x - Math.floor(x);
+    };
+
+    const positive = Math.floor(random(1) * 70) + 10; // 10-80%
+    const remaining = 100 - positive;
+    const neutral = Math.floor(random(2) * remaining);
+    const negative = 100 - positive - neutral;
+
+    return { positive, neutral, negative };
+  };
+
+  const sentimentData = generateRandomSentiment(selectedStock);
+
+  // Calculate sentiment percentages from AI results when available
+  const aiSentimentData = sentimentResults.length > 0 
     ? {
         positive: Math.round((sentimentResults.filter(r => r.sentiment === 'positive').length / sentimentResults.length) * 100),
         neutral: Math.round((sentimentResults.filter(r => r.sentiment === 'neutral').length / sentimentResults.length) * 100),
         negative: Math.round((sentimentResults.filter(r => r.sentiment === 'negative').length / sentimentResults.length) * 100),
       }
-    : { positive: 65, neutral: 25, negative: 10 };
+    : sentimentData;
 
   const getSentimentColor = (sentiment: 'positive' | 'neutral' | 'negative') => {
     switch (sentiment) {
@@ -110,8 +129,9 @@ const Sentiment = () => {
     }
   };
 
-  const overallSentiment = sentimentData.positive > 50 ? 'Bullish' : 
-                          sentimentData.negative > 50 ? 'Bearish' : 'Neutral';
+  const displaySentiment = sentimentResults.length > 0 ? aiSentimentData : sentimentData;
+  const overallSentiment = displaySentiment.positive > displaySentiment.negative && displaySentiment.positive > displaySentiment.neutral ? 'Bullish' : 
+                          displaySentiment.negative > displaySentiment.positive && displaySentiment.negative > displaySentiment.neutral ? 'Bearish' : 'Neutral';
 
   if (loading) {
     return (
@@ -153,7 +173,7 @@ const Sentiment = () => {
               <TrendingUp className="w-5 h-5" />
               <span className="font-semibold">Positive</span>
             </div>
-            <p className="text-3xl font-bold">{sentimentData.positive}%</p>
+            <p className="text-3xl font-bold">{displaySentiment.positive}%</p>
           </Card>
 
           <Card className="p-4 bg-muted">
@@ -161,7 +181,7 @@ const Sentiment = () => {
               <Minus className="w-5 h-5" />
               <span className="font-semibold">Neutral</span>
             </div>
-            <p className="text-3xl font-bold">{sentimentData.neutral}%</p>
+            <p className="text-3xl font-bold">{displaySentiment.neutral}%</p>
           </Card>
 
           <Card className="p-4 bg-destructive/90 text-destructive-foreground">
@@ -169,7 +189,7 @@ const Sentiment = () => {
               <TrendingDown className="w-5 h-5" />
               <span className="font-semibold">Negative</span>
             </div>
-            <p className="text-3xl font-bold">{sentimentData.negative}%</p>
+            <p className="text-3xl font-bold">{displaySentiment.negative}%</p>
           </Card>
         </div>
 
@@ -181,21 +201,21 @@ const Sentiment = () => {
           <div className="w-full bg-muted rounded-full h-8 overflow-hidden flex">
             <div
               className="bg-gradient-success flex items-center justify-center text-success-foreground text-xs font-medium transition-all"
-              style={{ width: `${sentimentData.positive}%` }}
+              style={{ width: `${displaySentiment.positive}%` }}
             >
-              {sentimentData.positive}%
+              {displaySentiment.positive}%
             </div>
             <div
               className="bg-muted-foreground/20 flex items-center justify-center text-xs font-medium transition-all"
-              style={{ width: `${sentimentData.neutral}%` }}
+              style={{ width: `${displaySentiment.neutral}%` }}
             >
-              {sentimentData.neutral}%
+              {displaySentiment.neutral}%
             </div>
             <div
               className="bg-destructive flex items-center justify-center text-destructive-foreground text-xs font-medium transition-all"
-              style={{ width: `${sentimentData.negative}%` }}
+              style={{ width: `${displaySentiment.negative}%` }}
             >
-              {sentimentData.negative}%
+              {displaySentiment.negative}%
             </div>
           </div>
           
@@ -208,8 +228,8 @@ const Sentiment = () => {
                 'Analyzing social media sentiment using AI...'
               ) : (
                 <>
-                  Social media sentiment for <strong>{selectedStock}</strong> shows {sentimentData.positive}% positive mentions, 
-                  {sentimentData.neutral}% neutral, and {sentimentData.negative}% negative. 
+                  Social media sentiment for <strong>{selectedStock}</strong> shows {displaySentiment.positive}% positive mentions, 
+                  {displaySentiment.neutral}% neutral, and {displaySentiment.negative}% negative. 
                   AI analysis indicates {overallSentiment.toLowerCase()} market sentiment based on recent social media activity.
                 </>
               )}

@@ -29,11 +29,11 @@ serve(async (req) => {
         messages: [
           { 
             role: 'system', 
-            content: 'You are a financial news summarizer. Generate concise, informative summaries of exactly 60 words or less. Focus on key market-moving information, financial impacts, and actionable insights.' 
+            content: 'You are a professional financial analyst. Write detailed, unbiased summaries of at least 120 words. Use varied sentence structures and professional tone. Include: company performance metrics, market reaction, financial indicators (revenue, profit, margins), growth signals, strategic initiatives, and relevant risks or challenges. Sound like a real financial analyst, not a template.' 
           },
           { 
             role: 'user', 
-            content: `Summarize this article in exactly 60 words or less:\n\nTitle: ${title}\n\nContent: ${content}` 
+            content: `Write a professional financial analysis summary of at least 120 words for this article:\n\nTitle: ${title}\n\nContent: ${content}\n\nProvide actionable insights for investors.` 
           }
         ],
       }),
