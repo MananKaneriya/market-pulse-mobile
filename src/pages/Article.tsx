@@ -6,14 +6,35 @@ import { DUMMY_NEWS_ARTICLES } from '@/lib/dummyData';
 import { ArrowLeft, Share2, Bookmark, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 const Article = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const article = DUMMY_NEWS_ARTICLES.find(a => a.id === id);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
+
+  useEffect(() => {
+    const trackView = async () => {
+      if (!article || !user) return;
+
+      try {
+        await supabase.from('article_views').insert({
+          user_id: user.id,
+          article_id: article.id,
+          article_title: article.title,
+          article_stock: article.stock
+        });
+      } catch (error) {
+        console.error('Error tracking article view:', error);
+      }
+    };
+
+    trackView();
+  }, [article, user]);
 
   useEffect(() => {
     const generateSummary = async () => {

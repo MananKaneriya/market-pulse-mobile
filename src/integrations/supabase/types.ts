@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      article_views: {
+        Row: {
+          article_id: string
+          article_stock: string | null
+          article_title: string | null
+          id: string
+          time_spent_seconds: number | null
+          user_id: string
+          viewed_at: string
+        }
+        Insert: {
+          article_id: string
+          article_stock?: string | null
+          article_title?: string | null
+          id?: string
+          time_spent_seconds?: number | null
+          user_id: string
+          viewed_at?: string
+        }
+        Update: {
+          article_id?: string
+          article_stock?: string | null
+          article_title?: string | null
+          id?: string
+          time_spent_seconds?: number | null
+          user_id?: string
+          viewed_at?: string
+        }
+        Relationships: []
+      }
       bookmarks: {
         Row: {
           article_id: string

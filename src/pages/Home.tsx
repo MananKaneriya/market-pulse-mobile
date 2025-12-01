@@ -15,6 +15,8 @@ const Home = () => {
   const [selectedStocks, setSelectedStocks] = useState<string[]>([]);
   const [showTip, setShowTip] = useState(true);
   const [bookmarkedArticles, setBookmarkedArticles] = useState<string[]>([]);
+  const [personalizedArticles, setPersonalizedArticles] = useState<typeof DUMMY_NEWS_ARTICLES>([]);
+  const [loadingPersonalization, setLoadingPersonalization] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -29,6 +31,12 @@ const Home = () => {
       fetchBookmarks();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (user && selectedStocks.length > 0) {
+      personalizeArticles();
+    }
+  }, [user, selectedStocks]);
 
   const fetchUserStocks = async () => {
     if (!user) return;
@@ -56,9 +64,81 @@ const Home = () => {
     }
   };
 
-  const filteredArticles = DUMMY_NEWS_ARTICLES.filter(article =>
-    selectedStocks.length === 0 || selectedStocks.includes(article.stock)
-  );
+  const personalizeArticles = async () => {
+    if (!user) return;
+
+    setLoadingPersonalization(true);
+    try {
+      // Fetch reading history
+      const { data: readingHistory } = await supabase
+        .from('article_views')
+        .select('article_id, article_title, article_stock, viewed_at')
+        .eq('user_id', user.id)
+        .order('viewed_at', { ascending: false })
+        .limit(10);
+
+      // Filter articles by selected stocks
+      const filteredArticles = DUMMY_NEWS_ARTICLES.filter(article =>
+        selectedStocks.includes(article.stock)
+      );
+
+      if (filteredArticles.length === 0) {
+        setPersonalizedArticles([]);
+        return;
+      }
+
+      // Call AI personalization
+      const { data, error } = await supabase.functions.invoke('personalize-feed', {
+        body: {
+          articles: filteredArticles,
+          selectedStocks,
+          readingHistory: readingHistory || []
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.rankedIndices) {
+        // Reorder articles based on AI ranking
+        const ranked = data.rankedIndices
+          .map((index: number) => filteredArticles[index])
+          .filter(Boolean);
+        setPersonalizedArticles(ranked);
+      } else {
+        setPersonalizedArticles(filteredArticles);
+      }
+    } catch (error) {
+      console.error('Error personalizing feed:', error);
+      // Fallback to basic filtering
+      const filteredArticles = DUMMY_NEWS_ARTICLES.filter(article =>
+        selectedStocks.includes(article.stock)
+      );
+      setPersonalizedArticles(filteredArticles);
+    } finally {
+      setLoadingPersonalization(false);
+    }
+  };
+
+  const trackArticleView = async (articleId: string, articleTitle: string, articleStock: string) => {
+    if (!user) return;
+
+    try {
+      await supabase.from('article_views').insert({
+        user_id: user.id,
+        article_id: articleId,
+        article_title: articleTitle,
+        article_stock: articleStock
+      });
+    } catch (error) {
+      console.error('Error tracking article view:', error);
+    }
+  };
+
+  const filteredArticles = selectedStocks.length === 0 
+    ? DUMMY_NEWS_ARTICLES 
+    : (personalizedArticles.length > 0 ? personalizedArticles : DUMMY_NEWS_ARTICLES.filter(article =>
+        selectedStocks.includes(article.stock)
+      ));
 
   const randomTip = DAILY_TIPS[Math.floor(Math.random() * DAILY_TIPS.length)];
 
@@ -117,14 +197,24 @@ const Home = () => {
           </Card>
         )}
 
+        {loadingPersonalization && selectedStocks.length > 0 && (
+          <Card className="mb-4 p-4 bg-muted/50">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-accent"></div>
+              <span>Personalizing your feed...</span>
+            </div>
+          </Card>
+        )}
+
         <div className="space-y-4">
           {filteredArticles.map(article => (
-            <NewsCard
-              key={article.id}
-              article={article}
-              isBookmarked={bookmarkedArticles.includes(article.id)}
-              onBookmarkChange={fetchBookmarks}
-            />
+            <div key={article.id} onClick={() => trackArticleView(article.id, article.title, article.stock)}>
+              <NewsCard
+                article={article}
+                isBookmarked={bookmarkedArticles.includes(article.id)}
+                onBookmarkChange={fetchBookmarks}
+              />
+            </div>
           ))}
         </div>
 
