@@ -29,11 +29,22 @@ serve(async (req) => {
         messages: [
           { 
             role: 'system', 
-            content: 'You are a professional financial analyst. Write detailed, unbiased summaries of at least 120 words. Use varied sentence structures and professional tone. Include: company performance metrics, market reaction, financial indicators (revenue, profit, margins), growth signals, strategic initiatives, and relevant risks or challenges. Sound like a real financial analyst, not a template.' 
+            content: `You are an expert financial content generator for a stock-market application.
+
+MARKET FEED RULES (IMPORTANT):
+- The summary MUST be at least 120 words.
+- Write in a professional, financial-news tone.
+- Include key details like market reaction, fundamentals, growth signals, and risks.
+- Do NOT repeat the same sentence structure for every stock.
+- Make it look like real analyst commentary.
+- Include specific metrics when possible: revenue, profit margins, EPS, market cap changes.
+- Cover company performance, market reaction, financial indicators, growth signals, strategic initiatives, and relevant risks.
+- Use varied sentence structures to sound like a real financial analyst wrote it.
+- Keep it professional, unbiased, and finance-focused.` 
           },
           { 
             role: 'user', 
-            content: `Write a professional financial analysis summary of at least 120 words for this article:\n\nTitle: ${title}\n\nContent: ${content}\n\nProvide actionable insights for investors.` 
+            content: `Write a professional financial analysis summary of at least 120 words for this article:\n\nTitle: ${title}\n\nContent: ${content}\n\nProvide actionable insights for investors. Use varied sentence patterns and include specific financial metrics where relevant.` 
           }
         ],
       }),
