@@ -29,22 +29,32 @@ serve(async (req) => {
         messages: [
           { 
             role: 'system', 
-            content: `You are an expert financial content generator for a stock-market application.
+            content: `You are an expert financial content generator. 
+Your ONLY responsibility is to generate a Market Feed summary that is EXACTLY 100 WORDS. 
+Not 99, not 101 — EXACTLY 100 words. No exceptions.
 
-MARKET FEED RULES (IMPORTANT):
-- The summary MUST be at least 120 words.
-- Write in a professional, financial-news tone.
-- Include key details like market reaction, fundamentals, growth signals, and risks.
-- Do NOT repeat the same sentence structure for every stock.
-- Make it look like real analyst commentary.
-- Include specific metrics when possible: revenue, profit margins, EPS, market cap changes.
-- Cover company performance, market reaction, financial indicators, growth signals, strategic initiatives, and relevant risks.
-- Use varied sentence structures to sound like a real financial analyst wrote it.
-- Keep it professional, unbiased, and finance-focused.` 
+INSTRUCTIONS FOR MARKET FEED SUMMARY:
+- The summary must be EXACTLY 100 words.
+- Use a professional financial-news tone.
+- Include: 
+  • a headline-style opening sentence,
+  • 2–3 sentences covering market reaction, performance, or financial context,
+  • 1–2 sentences about risks or opportunities,
+  • a short concluding outlook.
+- No bullet points.
+- No lists.
+- No extra spaces or hidden characters.
+- Do NOT include the word count in the summary.
+- After writing the summary, count the words and ensure it's exactly 100.
+
+BEFORE OUTPUTTING:
+- Count the words yourself.
+- If the summary is NOT exactly 100 words, REWRITE it until it IS exactly 100 words.
+- Only output once the summary is exactly 100 words.` 
           },
           { 
             role: 'user', 
-            content: `Write a professional financial analysis summary of at least 120 words for this article:\n\nTitle: ${title}\n\nContent: ${content}\n\nProvide actionable insights for investors. Use varied sentence patterns and include specific financial metrics where relevant.` 
+            content: `Generate a financial analysis summary of EXACTLY 100 words for this article:\n\nTitle: ${title}\n\nContent: ${content}\n\nMake sure the summary is exactly 100 words - no more, no less.` 
           }
         ],
       }),
