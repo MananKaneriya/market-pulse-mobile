@@ -41,6 +41,12 @@ All colors MUST be HSL.
 
     --radius: 0.75rem;
     
+    /* Fintech colors */
+    --fintech-blue: 217 91% 60%;
+    --fintech-green: 142 71% 45%;
+    --fintech-red: 0 84% 60%;
+    --fintech-gold: 45 93% 47%;
+    
     /* Financial theme gradients */
     --gradient-primary: linear-gradient(135deg, hsl(210 100% 12%), hsl(210 90% 25%));
     --gradient-accent: linear-gradient(135deg, hsl(180 65% 42%), hsl(195 80% 50%));

@@ -18,56 +18,131 @@ export const INDIAN_STOCKS = [
   { symbol: "SUNPHARMA", name: "Sun Pharmaceutical" },
 ];
 
-export const DUMMY_NEWS_ARTICLES = [
+export interface NewsComment {
+  id: string;
+  user: string;
+  content: string;
+}
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  content: string;
+  source: string;
+  timestamp: string;
+  sentiment: 'positive' | 'negative' | 'neutral';
+  relatedCompanies: string[];
+  likes: number;
+  comments: NewsComment[];
+  isBookmarked: boolean;
+  stock: string;
+  summary: string;
+  imageUrl?: string;
+}
+
+export const DUMMY_NEWS_ARTICLES: NewsItem[] = [
   {
     id: "news-1",
     title: "Reliance Industries Q3 Results Beat Estimates",
+    content: "Reliance Industries reported stellar Q3 results with net profit surging 15% YoY, driven by strong retail and digital services performance. The company's retail arm saw revenue growth of 18% while Jio Platforms added 12 million new subscribers this quarter.",
     source: "Economic Times",
-    summary: "Reliance Industries reported stellar Q3 results with net profit surging 15% YoY, driven by strong retail and digital services performance.",
-    content: "Full article content here...",
+    timestamp: "2h ago",
+    sentiment: "positive",
+    relatedCompanies: ["RELIANCE", "JIO"],
+    likes: 245,
+    comments: [
+      { id: "c1", user: "@investorpro", content: "Great results! Bullish on retail expansion" },
+      { id: "c2", user: "@marketwatch", content: "Jio growth is impressive" }
+    ],
+    isBookmarked: false,
     stock: "RELIANCE",
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    summary: "Reliance Industries reported stellar Q3 results with net profit surging 15% YoY, driven by strong retail and digital services performance.",
     imageUrl: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&h=400&fit=crop",
   },
   {
     id: "news-2",
-    title: "TCS Announces Major AI Partnership",
+    title: "TCS Announces Major AI Partnership with Google Cloud",
+    content: "TCS signs landmark deal with Google Cloud to develop AI-powered enterprise solutions, expected to boost revenue by 8-10% in next fiscal. The partnership will focus on generative AI implementations across banking, healthcare, and manufacturing sectors.",
     source: "Business Standard",
-    summary: "TCS signs landmark deal with Google Cloud to develop AI-powered enterprise solutions, expected to boost revenue by 8-10% in next fiscal.",
-    content: "Full article content here...",
+    timestamp: "4h ago",
+    sentiment: "positive",
+    relatedCompanies: ["TCS", "GOOGL"],
+    likes: 189,
+    comments: [
+      { id: "c3", user: "@techtrader", content: "AI partnerships driving IT stocks higher" }
+    ],
+    isBookmarked: false,
     stock: "TCS",
-    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+    summary: "TCS signs landmark deal with Google Cloud to develop AI-powered enterprise solutions, expected to boost revenue by 8-10% in next fiscal.",
     imageUrl: "https://images.unsplash.com/photo-1551434678-e076c223a692?w=800&h=400&fit=crop",
   },
   {
     id: "news-3",
     title: "HDFC Bank Expands Digital Banking Services",
+    content: "HDFC Bank launches new mobile-first features, targeting millennials and Gen-Z customers with instant loans and investment options. The digital transformation initiative includes AI-powered credit scoring and real-time portfolio tracking.",
     source: "Mint",
-    summary: "HDFC Bank launches new mobile-first features, targeting millennials and Gen-Z customers with instant loans and investment options.",
-    content: "Full article content here...",
+    timestamp: "6h ago",
+    sentiment: "positive",
+    relatedCompanies: ["HDFCBANK"],
+    likes: 156,
+    comments: [
+      { id: "c4", user: "@bankinginsider", content: "Digital push is the future" },
+      { id: "c5", user: "@financegeek", content: "Competition heating up with neobanks" }
+    ],
+    isBookmarked: false,
     stock: "HDFCBANK",
-    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+    summary: "HDFC Bank launches new mobile-first features, targeting millennials and Gen-Z customers with instant loans and investment options.",
     imageUrl: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=800&h=400&fit=crop",
   },
   {
     id: "news-4",
-    title: "Infosys Wins $500M Contract from European Bank",
+    title: "Infosys Faces Client Budget Cuts in Key Markets",
+    content: "Infosys reports slowdown in discretionary spending from US and European clients, particularly in BFSI segment. Management maintains guidance but warns of near-term headwinds affecting deal closures.",
     source: "Reuters",
-    summary: "Infosys secures major digital transformation deal worth $500 million, strengthening its position in European banking sector.",
-    content: "Full article content here...",
+    timestamp: "8h ago",
+    sentiment: "negative",
+    relatedCompanies: ["INFY"],
+    likes: 87,
+    comments: [
+      { id: "c6", user: "@cautiousinvestor", content: "IT sector facing headwinds globally" }
+    ],
+    isBookmarked: false,
     stock: "INFY",
-    timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
+    summary: "Infosys reports slowdown in discretionary spending from US and European clients, particularly in BFSI segment.",
     imageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=400&fit=crop",
   },
   {
     id: "news-5",
     title: "Bharti Airtel 5G Rollout Ahead of Schedule",
+    content: "Airtel completes 5G rollout in 500+ cities, 3 months ahead of target, with plans to cover rural areas by year-end. The telecom giant expects 5G to contribute significantly to ARPU growth in coming quarters.",
     source: "Financial Express",
-    summary: "Airtel completes 5G rollout in 500+ cities, 3 months ahead of target, with plans to cover rural areas by year-end.",
-    content: "Full article content here...",
+    timestamp: "10h ago",
+    sentiment: "positive",
+    relatedCompanies: ["BHARTIARTL", "JIO"],
+    likes: 312,
+    comments: [
+      { id: "c7", user: "@telecomanalyst", content: "Impressive execution by Airtel" },
+      { id: "c8", user: "@5Gwatcher", content: "Rural coverage will be game changer" }
+    ],
+    isBookmarked: false,
     stock: "BHARTIARTL",
-    timestamp: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString(),
+    summary: "Airtel completes 5G rollout in 500+ cities, 3 months ahead of target, with plans to cover rural areas by year-end.",
     imageUrl: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800&h=400&fit=crop",
+  },
+  {
+    id: "news-6",
+    title: "ICICI Bank Reports Strong Loan Growth",
+    content: "ICICI Bank's loan book grows 16% YoY with healthy asset quality metrics. Retail lending drives growth while corporate demand remains subdued. NIM expansion expected to continue in H2.",
+    source: "Moneycontrol",
+    timestamp: "12h ago",
+    sentiment: "neutral",
+    relatedCompanies: ["ICICIBANK"],
+    likes: 134,
+    comments: [],
+    isBookmarked: false,
+    stock: "ICICIBANK",
+    summary: "ICICI Bank's loan book grows 16% YoY with healthy asset quality metrics.",
+    imageUrl: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&h=400&fit=crop",
   },
 ];
 
