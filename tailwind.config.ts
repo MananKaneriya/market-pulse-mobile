@@ -51,6 +51,12 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        fintech: {
+          blue: "hsl(var(--fintech-blue))",
+          green: "hsl(var(--fintech-green))",
+          red: "hsl(var(--fintech-red))",
+          gold: "hsl(var(--fintech-gold))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

@@ -1,23 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Heart, MessageCircle, Share, Bookmark, TrendingUp, X } from 'lucide-react';
+import { toast } from 'sonner';
 import Navbar from '@/components/Navbar';
-import NewsCard from '@/components/NewsCard';
 import FeedbackWidget from '@/components/FeedbackWidget';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { DUMMY_NEWS_ARTICLES, DAILY_TIPS } from '@/lib/dummyData';
-import { X, Lightbulb } from 'lucide-react';
+import { DUMMY_NEWS_ARTICLES, DAILY_TIPS, type NewsItem } from '@/lib/dummyData';
 
 const Home = () => {
   const { user, loading } = useAuth();
-  const [selectedStocks, setSelectedStocks] = useState<string[]>([]);
-  const [showTip, setShowTip] = useState(true);
-  const [bookmarkedArticles, setBookmarkedArticles] = useState<string[]>([]);
-  const [personalizedArticles, setPersonalizedArticles] = useState<typeof DUMMY_NEWS_ARTICLES>([]);
-  const [loadingPersonalization, setLoadingPersonalization] = useState(false);
   const navigate = useNavigate();
+  const [newsItems, setNewsItems] = useState<NewsItem[]>(DUMMY_NEWS_ARTICLES);
+  const [showTip, setShowTip] = useState(false);
+  const [currentTip, setCurrentTip] = useState(DAILY_TIPS[0]);
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [selectedStocks, setSelectedStocks] = useState<string[]>([]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -26,17 +26,22 @@ const Home = () => {
   }, [user, loading, navigate]);
 
   useEffect(() => {
+    // Show daily tip after 2 seconds
+    const timer = setTimeout(() => {
+      setShowTip(true);
+      const randomTip = DAILY_TIPS[Math.floor(Math.random() * DAILY_TIPS.length)];
+      setCurrentTip(randomTip);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     if (user) {
       fetchUserStocks();
       fetchBookmarks();
     }
   }, [user]);
-
-  useEffect(() => {
-    if (user && selectedStocks.length > 0) {
-      personalizeArticles();
-    }
-  }, [user, selectedStocks]);
 
   const fetchUserStocks = async () => {
     if (!user) return;
@@ -60,87 +65,100 @@ const Home = () => {
       .eq('user_id', user.id);
 
     if (data) {
-      setBookmarkedArticles(data.map(d => d.article_id));
+      const bookmarkedIds = data.map(d => d.article_id);
+      setNewsItems(prev => prev.map(item => ({
+        ...item,
+        isBookmarked: bookmarkedIds.includes(item.id)
+      })));
     }
   };
 
-  const personalizeArticles = async () => {
-    if (!user) return;
-
-    setLoadingPersonalization(true);
-    try {
-      // Fetch reading history
-      const { data: readingHistory } = await supabase
-        .from('article_views')
-        .select('article_id, article_title, article_stock, viewed_at')
-        .eq('user_id', user.id)
-        .order('viewed_at', { ascending: false })
-        .limit(10);
-
-      // Filter articles by selected stocks
-      const filteredArticles = DUMMY_NEWS_ARTICLES.filter(article =>
-        selectedStocks.includes(article.stock)
-      );
-
-      if (filteredArticles.length === 0) {
-        setPersonalizedArticles([]);
-        return;
-      }
-
-      // Call AI personalization
-      const { data, error } = await supabase.functions.invoke('personalize-feed', {
-        body: {
-          articles: filteredArticles,
-          selectedStocks,
-          readingHistory: readingHistory || []
-        }
-      });
-
-      if (error) throw error;
-
-      if (data?.rankedIndices) {
-        // Reorder articles based on AI ranking
-        const ranked = data.rankedIndices
-          .map((index: number) => filteredArticles[index])
-          .filter(Boolean);
-        setPersonalizedArticles(ranked);
+  const handleLike = (newsId: string) => {
+    setLikedPosts(prev => {
+      const newLiked = new Set(prev);
+      if (newLiked.has(newsId)) {
+        newLiked.delete(newsId);
       } else {
-        setPersonalizedArticles(filteredArticles);
+        newLiked.add(newsId);
       }
-    } catch (error) {
-      console.error('Error personalizing feed:', error);
-      // Fallback to basic filtering
-      const filteredArticles = DUMMY_NEWS_ARTICLES.filter(article =>
-        selectedStocks.includes(article.stock)
-      );
-      setPersonalizedArticles(filteredArticles);
-    } finally {
-      setLoadingPersonalization(false);
-    }
+      return newLiked;
+    });
+
+    setNewsItems(prev => prev.map(item => 
+      item.id === newsId 
+        ? { ...item, likes: likedPosts.has(newsId) ? item.likes - 1 : item.likes + 1 }
+        : item
+    ));
   };
 
-  const trackArticleView = async (articleId: string, articleTitle: string, articleStock: string) => {
+  const handleBookmark = async (newsId: string) => {
     if (!user) return;
 
-    try {
-      await supabase.from('article_views').insert({
-        user_id: user.id,
-        article_id: articleId,
-        article_title: articleTitle,
-        article_stock: articleStock
+    const item = newsItems.find(item => item.id === newsId);
+    if (!item) return;
+
+    if (item.isBookmarked) {
+      // Remove bookmark
+      await supabase
+        .from('bookmarks')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('article_id', newsId);
+      toast.success('Removed from bookmarks');
+    } else {
+      // Add bookmark
+      await supabase
+        .from('bookmarks')
+        .insert({
+          user_id: user.id,
+          article_id: newsId,
+          article_title: item.title,
+          article_summary: item.summary,
+          article_source: item.source,
+        });
+      toast.success('Added to bookmarks');
+    }
+
+    setNewsItems(prev => prev.map(item => 
+      item.id === newsId 
+        ? { ...item, isBookmarked: !item.isBookmarked }
+        : item
+    ));
+  };
+
+  const handleShare = (newsItem: NewsItem) => {
+    if (navigator.share) {
+      navigator.share({
+        title: newsItem.title,
+        text: newsItem.content,
+        url: window.location.href,
       });
-    } catch (error) {
-      console.error('Error tracking article view:', error);
+    } else {
+      navigator.clipboard.writeText(`${newsItem.title}\n\n${newsItem.content}`);
+      toast.success('Copied to clipboard');
     }
   };
 
-  const filteredArticles = selectedStocks.length === 0 
-    ? DUMMY_NEWS_ARTICLES 
-    : (personalizedArticles.length > 0 ? personalizedArticles : DUMMY_NEWS_ARTICLES.filter(article =>
-        selectedStocks.includes(article.stock)
-      ));
+  const getSentimentColor = (sentiment: string) => {
+    switch (sentiment) {
+      case 'positive': return 'text-fintech-green';
+      case 'negative': return 'text-fintech-red';
+      default: return 'text-muted-foreground';
+    }
+  };
 
-  const randomTip = DAILY_TIPS[Math.floor(Math.random() * DAILY_TIPS.length)];
+  const getSentimentBg = (sentiment: string) => {
+    switch (sentiment) {
+      case 'positive': return 'bg-fintech-green/10 border-fintech-green/20';
+      case 'negative': return 'bg-fintech-red/10 border-fintech-red/20';
+      default: return 'bg-muted border-border';
+    }
+  };
+
+  // Filter articles by selected stocks if any
+  const filteredArticles = selectedStocks.length === 0 
+    ? newsItems 
+    : newsItems.filter(article => selectedStocks.includes(article.stock));
 
   if (loading) {
     return (
@@ -157,31 +175,12 @@ const Home = () => {
     <div className="min-h-screen bg-background pb-20 md:pb-4 md:pt-20">
       <Navbar />
       
-      <main className="container mx-auto px-4 py-6 max-w-2xl">
+      <div className="container mx-auto px-4 py-6 max-w-2xl">
+        {/* Welcome Section */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold mb-1">Market Feed</h1>
-          <p className="text-muted-foreground">Latest news for your portfolio</p>
+          <h1 className="text-2xl font-bold">Welcome to Market Pulse</h1>
+          <p className="text-muted-foreground">Latest financial news for your portfolio</p>
         </div>
-
-        {showTip && (
-          <Card className="mb-6 p-4 bg-gradient-accent text-accent-foreground animate-slide-up">
-            <div className="flex items-start gap-3">
-              <Lightbulb className="w-5 h-5 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <h3 className="font-semibold mb-1">💡 Daily Tip</h3>
-                <p className="text-sm">{randomTip}</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowTip(false)}
-                className="text-accent-foreground hover:bg-accent-foreground/20"
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-          </Card>
-        )}
 
         {selectedStocks.length === 0 && (
           <Card className="mb-6 p-4 bg-muted/50">
@@ -197,24 +196,109 @@ const Home = () => {
           </Card>
         )}
 
-        {loadingPersonalization && selectedStocks.length > 0 && (
-          <Card className="mb-4 p-4 bg-muted/50">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-accent"></div>
-              <span>Personalizing your feed...</span>
-            </div>
-          </Card>
-        )}
+        {/* News Feed */}
+        <div className="space-y-6">
+          {filteredArticles.map((item) => (
+            <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-200">
+              <CardContent className="p-0">
+                {/* Header */}
+                <div className="p-4 border-b border-border">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 bg-fintech-blue rounded-full flex items-center justify-center">
+                        <TrendingUp className="h-4 w-4 text-primary-foreground" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{item.source}</p>
+                        <p className="text-xs text-muted-foreground">{item.timestamp}</p>
+                      </div>
+                    </div>
+                    <div className={`px-2 py-1 rounded-full text-xs border ${getSentimentBg(item.sentiment)}`}>
+                      <span className={getSentimentColor(item.sentiment)}>
+                        {item.sentiment.toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-        <div className="space-y-4">
-          {filteredArticles.map(article => (
-            <div key={article.id} onClick={() => trackArticleView(article.id, article.title, article.stock)}>
-              <NewsCard
-                article={article}
-                isBookmarked={bookmarkedArticles.includes(article.id)}
-                onBookmarkChange={fetchBookmarks}
-              />
-            </div>
+                {/* Content */}
+                <div className="p-4">
+                  <h3 className="font-semibold text-lg mb-2">{item.title}</h3>
+                  <p className="text-muted-foreground mb-3">{item.content}</p>
+                  
+                  {/* Related Companies */}
+                  <div className="flex flex-wrap gap-1 mb-4">
+                    {item.relatedCompanies.map((company) => (
+                      <span 
+                        key={company} 
+                        className="text-xs bg-fintech-blue/10 text-fintech-blue px-2 py-1 rounded-full"
+                      >
+                        ${company}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="px-4 pb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleLike(item.id)}
+                        className={`hover:bg-fintech-red/10 ${likedPosts.has(item.id) ? 'text-fintech-red' : ''}`}
+                      >
+                        <Heart className={`h-4 w-4 mr-1 ${likedPosts.has(item.id) ? 'fill-current' : ''}`} />
+                        {item.likes}
+                      </Button>
+                      
+                      <Button variant="ghost" size="sm" className="hover:bg-fintech-blue/10">
+                        <MessageCircle className="h-4 w-4 mr-1" />
+                        {item.comments.length}
+                      </Button>
+                      
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleShare(item)}
+                        className="hover:bg-fintech-green/10"
+                      >
+                        <Share className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleBookmark(item.id)}
+                      className={`hover:bg-fintech-gold/10 ${item.isBookmarked ? 'text-fintech-gold' : ''}`}
+                    >
+                      <Bookmark className={`h-4 w-4 ${item.isBookmarked ? 'fill-current' : ''}`} />
+                    </Button>
+                  </div>
+
+                  {/* Comments Preview */}
+                  {item.comments.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-border">
+                      <div className="space-y-2">
+                        {item.comments.slice(0, 2).map((comment) => (
+                          <div key={comment.id} className="text-sm">
+                            <span className="font-medium">{comment.user}</span>
+                            <span className="ml-2 text-muted-foreground">{comment.content}</span>
+                          </div>
+                        ))}
+                        {item.comments.length > 2 && (
+                          <p className="text-xs text-muted-foreground">
+                            View all {item.comments.length} comments
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
 
@@ -225,7 +309,29 @@ const Home = () => {
             </p>
           </Card>
         )}
-      </main>
+      </div>
+
+      {/* Daily Tip Popup */}
+      {showTip && (
+        <div className="fixed bottom-24 left-4 right-4 md:right-auto md:max-w-sm z-50 animate-slide-up">
+          <Card className="bg-fintech-gold shadow-lg border-fintech-gold/20">
+            <CardContent className="p-4">
+              <div className="flex justify-between items-start mb-2">
+                <h4 className="font-semibold text-primary-foreground">💡 Daily Tip</h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowTip(false)}
+                  className="text-primary-foreground hover:bg-primary-foreground/20 p-1 h-auto"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+              <p className="text-sm text-primary-foreground/90">{currentTip}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <FeedbackWidget screenName="home_feed" />
     </div>
