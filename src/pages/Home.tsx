@@ -2,22 +2,34 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Heart, MessageCircle, Share, Bookmark, TrendingUp, X } from 'lucide-react';
+import { Heart, MessageCircle, Share, Bookmark, TrendingUp, X, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import Navbar from '@/components/Navbar';
 import FeedbackWidget from '@/components/FeedbackWidget';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { DUMMY_NEWS_ARTICLES, DAILY_TIPS, type NewsItem } from '@/lib/dummyData';
+import { DAILY_TIPS } from '@/lib/dummyData';
+
+interface StockSummary {
+  id: string;
+  ticker: string;
+  summary: string;
+  sentiment: 'positive' | 'negative' | 'neutral';
+  timestamp: string;
+  likes: number;
+  isBookmarked: boolean;
+}
 
 const Home = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [newsItems, setNewsItems] = useState<NewsItem[]>(DUMMY_NEWS_ARTICLES);
+  const [summaries, setSummaries] = useState<StockSummary[]>([]);
   const [showTip, setShowTip] = useState(false);
   const [currentTip, setCurrentTip] = useState(DAILY_TIPS[0]);
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [selectedStocks, setSelectedStocks] = useState<string[]>([]);
+  const [isLoadingSummaries, setIsLoadingSummaries] = useState(false);
+  const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -26,7 +38,6 @@ const Home = () => {
   }, [user, loading, navigate]);
 
   useEffect(() => {
-    // Show daily tip after 2 seconds
     const timer = setTimeout(() => {
       setShowTip(true);
       const randomTip = DAILY_TIPS[Math.floor(Math.random() * DAILY_TIPS.length)];
@@ -42,6 +53,12 @@ const Home = () => {
       fetchBookmarks();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (selectedStocks.length > 0) {
+      fetchSummaries();
+    }
+  }, [selectedStocks]);
 
   const fetchUserStocks = async () => {
     if (!user) return;
@@ -65,76 +82,116 @@ const Home = () => {
       .eq('user_id', user.id);
 
     if (data) {
-      const bookmarkedIds = data.map(d => d.article_id);
-      setNewsItems(prev => prev.map(item => ({
-        ...item,
-        isBookmarked: bookmarkedIds.includes(item.id)
-      })));
+      setBookmarkedIds(data.map(d => d.article_id));
     }
   };
 
-  const handleLike = (newsId: string) => {
+  const fetchSummaries = async () => {
+    if (selectedStocks.length === 0) return;
+    
+    setIsLoadingSummaries(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-summary', {
+        body: { stocks: selectedStocks.slice(0, 15) }
+      });
+
+      if (error) {
+        console.error('Error fetching summaries:', error);
+        toast.error('Failed to load market summaries');
+        return;
+      }
+
+      if (data?.summaries && Array.isArray(data.summaries)) {
+        const formattedSummaries: StockSummary[] = data.summaries.map((item: any, index: number) => ({
+          id: `summary-${item.ticker}-${Date.now()}-${index}`,
+          ticker: item.ticker,
+          summary: item.summary,
+          sentiment: determineSentiment(item.summary),
+          timestamp: 'Just now',
+          likes: Math.floor(Math.random() * 100),
+          isBookmarked: bookmarkedIds.includes(`summary-${item.ticker}`)
+        }));
+        setSummaries(formattedSummaries);
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      toast.error('Failed to generate summaries');
+    } finally {
+      setIsLoadingSummaries(false);
+    }
+  };
+
+  const determineSentiment = (summary: string): 'positive' | 'negative' | 'neutral' => {
+    const positiveWords = ['growth', 'bullish', 'gain', 'positive', 'strong', 'upward', 'optimistic', 'rally', 'surge'];
+    const negativeWords = ['decline', 'bearish', 'loss', 'negative', 'weak', 'downward', 'pessimistic', 'drop', 'fall'];
+    
+    const lowerSummary = summary.toLowerCase();
+    const positiveCount = positiveWords.filter(word => lowerSummary.includes(word)).length;
+    const negativeCount = negativeWords.filter(word => lowerSummary.includes(word)).length;
+    
+    if (positiveCount > negativeCount) return 'positive';
+    if (negativeCount > positiveCount) return 'negative';
+    return 'neutral';
+  };
+
+  const handleLike = (id: string) => {
     setLikedPosts(prev => {
       const newLiked = new Set(prev);
-      if (newLiked.has(newsId)) {
-        newLiked.delete(newsId);
+      if (newLiked.has(id)) {
+        newLiked.delete(id);
       } else {
-        newLiked.add(newsId);
+        newLiked.add(id);
       }
       return newLiked;
     });
 
-    setNewsItems(prev => prev.map(item => 
-      item.id === newsId 
-        ? { ...item, likes: likedPosts.has(newsId) ? item.likes - 1 : item.likes + 1 }
+    setSummaries(prev => prev.map(item => 
+      item.id === id 
+        ? { ...item, likes: likedPosts.has(id) ? item.likes - 1 : item.likes + 1 }
         : item
     ));
   };
 
-  const handleBookmark = async (newsId: string) => {
+  const handleBookmark = async (id: string) => {
     if (!user) return;
 
-    const item = newsItems.find(item => item.id === newsId);
+    const item = summaries.find(s => s.id === id);
     if (!item) return;
 
     if (item.isBookmarked) {
-      // Remove bookmark
       await supabase
         .from('bookmarks')
         .delete()
         .eq('user_id', user.id)
-        .eq('article_id', newsId);
+        .eq('article_id', id);
       toast.success('Removed from bookmarks');
     } else {
-      // Add bookmark
       await supabase
         .from('bookmarks')
         .insert({
           user_id: user.id,
-          article_id: newsId,
-          article_title: item.title,
+          article_id: id,
+          article_title: `${item.ticker} Market Summary`,
           article_summary: item.summary,
-          article_source: item.source,
+          article_source: 'MarketPulse AI',
         });
       toast.success('Added to bookmarks');
     }
 
-    setNewsItems(prev => prev.map(item => 
-      item.id === newsId 
-        ? { ...item, isBookmarked: !item.isBookmarked }
-        : item
+    setSummaries(prev => prev.map(s => 
+      s.id === id ? { ...s, isBookmarked: !s.isBookmarked } : s
     ));
   };
 
-  const handleShare = (newsItem: NewsItem) => {
+  const handleShare = (item: StockSummary) => {
     if (navigator.share) {
       navigator.share({
-        title: newsItem.title,
-        text: newsItem.content,
+        title: `${item.ticker} Market Summary`,
+        text: item.summary,
         url: window.location.href,
       });
     } else {
-      navigator.clipboard.writeText(`${newsItem.title}\n\n${newsItem.content}`);
+      navigator.clipboard.writeText(`${item.ticker} Market Summary\n\n${item.summary}`);
       toast.success('Copied to clipboard');
     }
   };
@@ -155,11 +212,6 @@ const Home = () => {
     }
   };
 
-  // Filter articles by selected stocks if any
-  const filteredArticles = selectedStocks.length === 0 
-    ? newsItems 
-    : newsItems.filter(article => selectedStocks.includes(article.stock));
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -177,9 +229,23 @@ const Home = () => {
       
       <div className="container mx-auto px-4 py-6 max-w-2xl">
         {/* Welcome Section */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold">Welcome to Market Pulse</h1>
-          <p className="text-muted-foreground">Latest financial news for your portfolio</p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Welcome to MarketPulse</h1>
+            <p className="text-muted-foreground">AI-powered market summaries for your stocks</p>
+          </div>
+          {selectedStocks.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchSummaries}
+              disabled={isLoadingSummaries}
+              className="gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoadingSummaries ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          )}
         </div>
 
         {selectedStocks.length === 0 && (
@@ -196,117 +262,115 @@ const Home = () => {
           </Card>
         )}
 
-        {/* News Feed */}
-        <div className="space-y-6">
-          {filteredArticles.map((item) => (
-            <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-200">
-              <CardContent className="p-0">
-                {/* Header */}
-                <div className="p-4 border-b border-border">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-8 h-8 bg-fintech-blue rounded-full flex items-center justify-center">
-                        <TrendingUp className="h-4 w-4 text-primary-foreground" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">{item.source}</p>
-                        <p className="text-xs text-muted-foreground">{item.timestamp}</p>
-                      </div>
-                    </div>
-                    <div className={`px-2 py-1 rounded-full text-xs border ${getSentimentBg(item.sentiment)}`}>
-                      <span className={getSentimentColor(item.sentiment)}>
-                        {item.sentiment.toUpperCase()}
-                      </span>
+        {/* Loading State */}
+        {isLoadingSummaries && (
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <Card key={i} className="overflow-hidden animate-pulse">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <div className="w-8 h-8 bg-muted rounded-full"></div>
+                    <div className="space-y-2">
+                      <div className="h-4 w-24 bg-muted rounded"></div>
+                      <div className="h-3 w-16 bg-muted rounded"></div>
                     </div>
                   </div>
-                </div>
-
-                {/* Content */}
-                <div className="p-4">
-                  <h3 className="font-semibold text-lg mb-2">{item.title}</h3>
-                  <p className="text-muted-foreground mb-3">{item.content}</p>
-                  
-                  {/* Related Companies */}
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    {item.relatedCompanies.map((company) => (
-                      <span 
-                        key={company} 
-                        className="text-xs bg-fintech-blue/10 text-fintech-blue px-2 py-1 rounded-full"
-                      >
-                        ${company}
-                      </span>
-                    ))}
+                  <div className="space-y-2">
+                    <div className="h-4 w-full bg-muted rounded"></div>
+                    <div className="h-4 w-full bg-muted rounded"></div>
+                    <div className="h-4 w-3/4 bg-muted rounded"></div>
                   </div>
-                </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
-                {/* Actions */}
-                <div className="px-4 pb-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
+        {/* Summaries Feed */}
+        {!isLoadingSummaries && (
+          <div className="space-y-6">
+            {summaries.map((item) => (
+              <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-200">
+                <CardContent className="p-0">
+                  {/* Header */}
+                  <div className="p-4 border-b border-border">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-fintech-blue rounded-full flex items-center justify-center">
+                          <TrendingUp className="h-4 w-4 text-primary-foreground" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">${item.ticker}</p>
+                          <p className="text-xs text-muted-foreground">{item.timestamp}</p>
+                        </div>
+                      </div>
+                      <div className={`px-2 py-1 rounded-full text-xs border ${getSentimentBg(item.sentiment)}`}>
+                        <span className={getSentimentColor(item.sentiment)}>
+                          {item.sentiment.toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-4">
+                    <h3 className="font-semibold text-lg mb-2">{item.ticker} Market Summary</h3>
+                    <p className="text-muted-foreground">{item.summary}</p>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="px-4 pb-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleLike(item.id)}
+                          className={`hover:bg-fintech-red/10 ${likedPosts.has(item.id) ? 'text-fintech-red' : ''}`}
+                        >
+                          <Heart className={`h-4 w-4 mr-1 ${likedPosts.has(item.id) ? 'fill-current' : ''}`} />
+                          {item.likes}
+                        </Button>
+                        
+                        <Button variant="ghost" size="sm" className="hover:bg-fintech-blue/10">
+                          <MessageCircle className="h-4 w-4 mr-1" />
+                          0
+                        </Button>
+                        
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleShare(item)}
+                          className="hover:bg-fintech-green/10"
+                        >
+                          <Share className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleLike(item.id)}
-                        className={`hover:bg-fintech-red/10 ${likedPosts.has(item.id) ? 'text-fintech-red' : ''}`}
+                        onClick={() => handleBookmark(item.id)}
+                        className={`hover:bg-fintech-gold/10 ${item.isBookmarked ? 'text-fintech-gold' : ''}`}
                       >
-                        <Heart className={`h-4 w-4 mr-1 ${likedPosts.has(item.id) ? 'fill-current' : ''}`} />
-                        {item.likes}
-                      </Button>
-                      
-                      <Button variant="ghost" size="sm" className="hover:bg-fintech-blue/10">
-                        <MessageCircle className="h-4 w-4 mr-1" />
-                        {item.comments.length}
-                      </Button>
-                      
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => handleShare(item)}
-                        className="hover:bg-fintech-green/10"
-                      >
-                        <Share className="h-4 w-4" />
+                        <Bookmark className={`h-4 w-4 ${item.isBookmarked ? 'fill-current' : ''}`} />
                       </Button>
                     </div>
-                    
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleBookmark(item.id)}
-                      className={`hover:bg-fintech-gold/10 ${item.isBookmarked ? 'text-fintech-gold' : ''}`}
-                    >
-                      <Bookmark className={`h-4 w-4 ${item.isBookmarked ? 'fill-current' : ''}`} />
-                    </Button>
                   </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
-                  {/* Comments Preview */}
-                  {item.comments.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-border">
-                      <div className="space-y-2">
-                        {item.comments.slice(0, 2).map((comment) => (
-                          <div key={comment.id} className="text-sm">
-                            <span className="font-medium">{comment.user}</span>
-                            <span className="ml-2 text-muted-foreground">{comment.content}</span>
-                          </div>
-                        ))}
-                        {item.comments.length > 2 && (
-                          <p className="text-xs text-muted-foreground">
-                            View all {item.comments.length} comments
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {filteredArticles.length === 0 && selectedStocks.length > 0 && (
+        {!isLoadingSummaries && summaries.length === 0 && selectedStocks.length > 0 && (
           <Card className="p-8 text-center">
-            <p className="text-muted-foreground">
-              No news articles found for your selected stocks.
+            <p className="text-muted-foreground mb-4">
+              No summaries loaded yet. Click refresh to generate AI summaries.
             </p>
+            <Button onClick={fetchSummaries} disabled={isLoadingSummaries}>
+              Generate Summaries
+            </Button>
           </Card>
         )}
       </div>
