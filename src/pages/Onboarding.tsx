@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { INDIAN_STOCKS } from '@/lib/dummyData';
-import { TrendingUp } from 'lucide-react';
+import { INDIAN_STOCKS, IndianStockCompany } from '@/lib/dummyData';
+import { TrendingUp, ChevronRight } from 'lucide-react';
 
 const Onboarding = () => {
-  const [selectedStocks, setSelectedStocks] = useState<string[]>([]);
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+  const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -22,19 +24,19 @@ const Onboarding = () => {
     }
   }, [user, navigate]);
 
-  const toggleStock = (symbol: string) => {
-    setSelectedStocks(prev =>
-      prev.includes(symbol)
-        ? prev.filter(s => s !== symbol)
-        : [...prev, symbol]
+  const handleCompanyToggle = (companyId: string) => {
+    setSelectedCompanies(prev =>
+      prev.includes(companyId)
+        ? prev.filter(id => id !== companyId)
+        : [...prev, companyId]
     );
   };
 
   const handleContinue = async () => {
-    if (selectedStocks.length === 0) {
+    if (selectedCompanies.length === 0) {
       toast({
-        title: 'Select at least one stock',
-        description: 'Choose the companies you want to track.',
+        title: 'Select at least one company',
+        description: 'Please select at least one company to continue',
         variant: 'destructive',
       });
       return;
@@ -51,11 +53,14 @@ const Onboarding = () => {
         .eq('user_id', user.id);
 
       // Insert new selections
-      const selections = selectedStocks.map(symbol => ({
-        user_id: user.id,
-        stock_symbol: symbol,
-        stock_name: INDIAN_STOCKS.find(s => s.symbol === symbol)?.name || symbol,
-      }));
+      const selections = selectedCompanies.map(companyId => {
+        const company = INDIAN_STOCKS.find(s => s.id === companyId);
+        return {
+          user_id: user.id,
+          stock_symbol: company?.symbol || companyId,
+          stock_name: company?.name || companyId,
+        };
+      });
 
       const { error } = await supabase
         .from('user_stock_selections')
@@ -63,9 +68,13 @@ const Onboarding = () => {
 
       if (error) throw error;
 
+      // Save to localStorage for quick access
+      localStorage.setItem('marketpulse-selected-companies', JSON.stringify(selectedCompanies));
+      localStorage.setItem('marketpulse-onboarding-complete', 'true');
+
       toast({
         title: 'All set!',
-        description: 'Your preferences have been saved.',
+        description: `${selectedCompanies.length} companies selected successfully!`,
       });
 
       navigate('/');
@@ -80,49 +89,105 @@ const Onboarding = () => {
     }
   };
 
+  // Group companies by sector
+  const groupedCompanies = INDIAN_STOCKS.reduce((acc, company) => {
+    if (!acc[company.sector]) {
+      acc[company.sector] = [];
+    }
+    acc[company.sector].push(company);
+    return acc;
+  }, {} as Record<string, IndianStockCompany[]>);
+
   return (
-    <div className="min-h-screen bg-background p-4 flex items-center justify-center">
-      <Card className="w-full max-w-2xl p-6 md:p-8 animate-fade-in">
-        <div className="flex items-center gap-2 mb-6">
-          <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center">
-            <TrendingUp className="w-6 h-6 text-accent-foreground" />
+    <div className="min-h-screen bg-gradient-to-br from-fintech-blue to-fintech-green">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center space-x-2 text-white">
+            <TrendingUp className="h-6 w-6" />
+            <span className="text-xl font-bold">MarketPulse</span>
           </div>
-          <h1 className="text-2xl font-bold">MarketPulse</h1>
+          <div className="text-white text-sm">
+            Step {currentStep} of 1
+          </div>
         </div>
 
-        <h2 className="text-xl font-semibold mb-2">Choose your stocks</h2>
-        <p className="text-muted-foreground mb-6">
-          Select the Indian companies you invest in or want to track. You can change this later in settings.
-        </p>
+        {/* Progress */}
+        <div className="mb-8">
+          <Progress value={100} className="h-2" />
+        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-          {INDIAN_STOCKS.map(stock => (
-            <div
-              key={stock.symbol}
-              className="flex items-center space-x-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer"
-              onClick={() => toggleStock(stock.symbol)}
-            >
-              <Checkbox
-                checked={selectedStocks.includes(stock.symbol)}
-                onCheckedChange={() => toggleStock(stock.symbol)}
-              />
-              <div className="flex-1">
-                <div className="font-medium">{stock.symbol}</div>
-                <div className="text-sm text-muted-foreground">{stock.name}</div>
+        {/* Main Content */}
+        <div className="max-w-4xl mx-auto">
+          <Card className="shadow-2xl">
+            <CardHeader className="text-center pb-6">
+              <CardTitle className="text-3xl mb-2">Select Your Portfolio</CardTitle>
+              <p className="text-muted-foreground text-lg">
+                Choose the Indian companies you have invested in to get personalized insights
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {Object.entries(groupedCompanies).map(([sector, companies]) => (
+                  <div key={sector} className="space-y-3">
+                    <h3 className="text-lg font-semibold text-fintech-blue border-b pb-2">
+                      {sector}
+                    </h3>
+                    <div className="grid md:grid-cols-2 gap-3">
+                      {companies.map((company) => (
+                        <div
+                          key={company.id}
+                          className={`flex items-center space-x-3 p-3 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:bg-muted/50 ${
+                            selectedCompanies.includes(company.id)
+                              ? 'border-fintech-green bg-fintech-green/5'
+                              : 'border-border'
+                          }`}
+                          onClick={() => handleCompanyToggle(company.id)}
+                        >
+                          <Checkbox
+                            checked={selectedCompanies.includes(company.id)}
+                            onCheckedChange={() => handleCompanyToggle(company.id)}
+                          />
+                          <div className="flex-1">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <p className="font-medium">{company.name}</p>
+                                <p className="text-sm text-muted-foreground">{company.symbol}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-medium">₹{company.currentPrice.toFixed(2)}</p>
+                                <p className={`text-sm ${
+                                  company.change >= 0 ? 'text-fintech-green' : 'text-fintech-red'
+                                }`}>
+                                  {company.change >= 0 ? '+' : ''}{company.changePercent.toFixed(2)}%
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          ))}
-        </div>
 
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            {selectedStocks.length} selected
-          </p>
-          <Button onClick={handleContinue} disabled={loading || selectedStocks.length === 0}>
-            {loading ? 'Saving...' : 'Continue'}
-          </Button>
+              <div className="mt-8 flex justify-between items-center">
+                <p className="text-sm text-muted-foreground">
+                  {selectedCompanies.length} companies selected
+                </p>
+                <Button
+                  onClick={handleContinue}
+                  className="bg-fintech-green hover:bg-fintech-green/90 px-8"
+                  disabled={loading || selectedCompanies.length === 0}
+                >
+                  {loading ? 'Saving...' : 'Continue to MarketPulse'}
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </Card>
+      </div>
     </div>
   );
 };
