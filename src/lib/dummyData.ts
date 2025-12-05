@@ -1,21 +1,31 @@
 // Dummy data for MarketPulse demo
 
-export const INDIAN_STOCKS = [
-  { symbol: "RELIANCE", name: "Reliance Industries" },
-  { symbol: "TCS", name: "Tata Consultancy Services" },
-  { symbol: "HDFCBANK", name: "HDFC Bank" },
-  { symbol: "INFY", name: "Infosys" },
-  { symbol: "ICICIBANK", name: "ICICI Bank" },
-  { symbol: "HINDUNILVR", name: "Hindustan Unilever" },
-  { symbol: "ITC", name: "ITC Limited" },
-  { symbol: "SBIN", name: "State Bank of India" },
-  { symbol: "BHARTIARTL", name: "Bharti Airtel" },
-  { symbol: "KOTAKBANK", name: "Kotak Mahindra Bank" },
-  { symbol: "LT", name: "Larsen & Toubro" },
-  { symbol: "AXISBANK", name: "Axis Bank" },
-  { symbol: "ASIANPAINT", name: "Asian Paints" },
-  { symbol: "MARUTI", name: "Maruti Suzuki" },
-  { symbol: "SUNPHARMA", name: "Sun Pharmaceutical" },
+export interface IndianStockCompany {
+  id: string;
+  symbol: string;
+  name: string;
+  sector: string;
+  currentPrice: number;
+  change: number;
+  changePercent: number;
+}
+
+export const INDIAN_STOCKS: IndianStockCompany[] = [
+  { id: "1", symbol: "RELIANCE", name: "Reliance Industries", sector: "Energy & Conglomerate", currentPrice: 2456.75, change: 45.20, changePercent: 1.88 },
+  { id: "2", symbol: "TCS", name: "Tata Consultancy Services", sector: "Information Technology", currentPrice: 3890.50, change: -28.35, changePercent: -0.72 },
+  { id: "3", symbol: "HDFCBANK", name: "HDFC Bank", sector: "Banking & Finance", currentPrice: 1678.25, change: 22.80, changePercent: 1.38 },
+  { id: "4", symbol: "INFY", name: "Infosys", sector: "Information Technology", currentPrice: 1456.30, change: -15.60, changePercent: -1.06 },
+  { id: "5", symbol: "ICICIBANK", name: "ICICI Bank", sector: "Banking & Finance", currentPrice: 1089.45, change: 18.90, changePercent: 1.77 },
+  { id: "6", symbol: "HINDUNILVR", name: "Hindustan Unilever", sector: "FMCG", currentPrice: 2567.80, change: -8.45, changePercent: -0.33 },
+  { id: "7", symbol: "ITC", name: "ITC Limited", sector: "FMCG", currentPrice: 456.25, change: 12.35, changePercent: 2.78 },
+  { id: "8", symbol: "SBIN", name: "State Bank of India", sector: "Banking & Finance", currentPrice: 678.90, change: 8.65, changePercent: 1.29 },
+  { id: "9", symbol: "BHARTIARTL", name: "Bharti Airtel", sector: "Telecommunications", currentPrice: 1234.55, change: 32.10, changePercent: 2.67 },
+  { id: "10", symbol: "KOTAKBANK", name: "Kotak Mahindra Bank", sector: "Banking & Finance", currentPrice: 1789.30, change: -12.55, changePercent: -0.70 },
+  { id: "11", symbol: "LT", name: "Larsen & Toubro", sector: "Infrastructure", currentPrice: 3456.70, change: 56.80, changePercent: 1.67 },
+  { id: "12", symbol: "AXISBANK", name: "Axis Bank", sector: "Banking & Finance", currentPrice: 1123.45, change: 15.20, changePercent: 1.37 },
+  { id: "13", symbol: "ASIANPAINT", name: "Asian Paints", sector: "Consumer Durables", currentPrice: 2890.60, change: -22.30, changePercent: -0.77 },
+  { id: "14", symbol: "MARUTI", name: "Maruti Suzuki", sector: "Automobile", currentPrice: 12456.85, change: 189.50, changePercent: 1.55 },
+  { id: "15", symbol: "SUNPHARMA", name: "Sun Pharmaceutical", sector: "Healthcare", currentPrice: 1567.40, change: 28.90, changePercent: 1.88 },
 ];
 
 export interface NewsComment {
