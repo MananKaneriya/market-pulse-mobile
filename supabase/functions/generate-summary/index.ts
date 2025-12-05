@@ -97,7 +97,8 @@ BEFORE OUTPUTTING:
 
     // Handle multiple stocks summaries (new behavior)
     if (stocks && Array.isArray(stocks)) {
-      const stocksToProcess = stocks.slice(0, 7);
+      // allow up to 15 stocks per request (app will send up to 15)
+      const stocksToProcess = Array.isArray(stocks) ? stocks.slice(0, 15) : [];
       
       const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
@@ -110,30 +111,33 @@ BEFORE OUTPUTTING:
           messages: [
             { 
               role: 'system', 
-              content: `You are a professional financial analyst AI. Your ONLY job is to generate high-quality Market Feed summaries.
+              content: `You are a professional financial analyst AI. Your ONLY job is to generate **one** concise market summary per ticker requested.
 
-TASK:
-For every stock provided, you MUST generate a professional financial summary of EXACTLY **100 words**. 
-Not 99 words. Not 101 words. Exactly 100.
+REQUIREMENTS (strict):
+- INPUT: you will be provided an array named "stocks" (strings, tickers). The array length will be 1..15.
+- OUTPUT: return a JSON array (text only) with the same number of objects and the same order as the input "stocks" array.
+  Example output:
+  [
+    {"ticker":"TICKER1","summary":"EXACTLY 100 WORDS SUMMARY FOR TICKER1."},
+    {"ticker":"TICKER2","summary":"EXACTLY 100 WORDS SUMMARY FOR TICKER2."}
+  ]
 
-MARKET FEED SUMMARY RULES:
-- Each summary must be exactly 100 words.
-- Tone: professional, financial-news style.
-- Content must mention: the stock's recent performance, investor sentiment, catalysts, risks, and short outlook.
-- No bullet points, no lists — use a single clean paragraph.
-- No repeated phrases or template-like writing.
-- Each summary should be unique and specific to the stock.
+- Each object's "summary" must be exactly **100 words** (no more, no less). Count words using whitespace separation. If a generated summary is not 100 words, regenerate until it is. Do not output any extra commentary, logs, or text outside the JSON array.
+- The summary must be a single paragraph (no lists or bullet points) and must include: a one-line headline style opening, 1–2 sentences on recent performance, 1 sentence on investor sentiment/market reaction, 1 sentence on catalysts/growth signals, 1 sentence on risks/downside, 1 concluding outlook sentence. Make language stock-specific (do not repeat templates).
+- If you cannot produce a meaningful summary for a ticker, still include an object for that ticker with "summary": "Summary not available." Prefer to always produce a 100-word summary.
 
-OUTPUT FORMAT (strict JSON array):
+ADDITIONAL RULES:
+- The output array must contain exactly N objects, where N = number of input tickers, and must be VALID parseable JSON.
+- Do not include any extra keys, comments, or wrapper objects.
+- Keep each summary independent and avoid copying identical phrasings across tickers.
+
+FEW-SHOT FORMAT (only to guide style — do not copy full text):
 [
-  {"ticker": "TICKER1", "summary": "EXACT 100 WORD SUMMARY"},
-  {"ticker": "TICKER2", "summary": "EXACT 100 WORD SUMMARY"}
+  {"ticker":"RELIANCE","summary":"<100-word professional summary for Reliance...>"},
+  {"ticker":"TCS","summary":"<100-word professional summary for TCS...>"}
 ]
 
-PROCESS:
-1. Generate EXACT 100-word summaries for each stock.
-2. Output them in the exact JSON array format above.
-3. Return ONLY the JSON array, no other text.` 
+Now produce the JSON array of summaries for the provided "stocks" input.` 
             },
             { 
               role: 'user', 
