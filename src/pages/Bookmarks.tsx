@@ -6,8 +6,9 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Share2, Trash2 } from 'lucide-react';
+import { Share2, Trash2, Bookmark, BookmarkX } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Bookmark {
   id: string;
@@ -94,30 +95,50 @@ const Bookmarks = () => {
 
   if (loading || loadingBookmarks) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+      <div className="min-h-screen bg-background bg-mesh pb-20 md:pb-4 md:pt-20">
+        <Navbar />
+        <main className="container mx-auto px-4 py-6 max-w-2xl">
+          <div className="mb-6">
+            <Skeleton className="h-8 w-48 mb-2" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <Skeleton key={i} className="h-32 rounded-xl" />
+            ))}
+          </div>
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-4 md:pt-20">
+    <div className="min-h-screen bg-background bg-mesh pb-20 md:pb-4 md:pt-20">
       <Navbar />
       
       <main className="container mx-auto px-4 py-6 max-w-2xl">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold mb-1">Saved Articles</h1>
-          <p className="text-muted-foreground">
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-gradient-warm flex items-center justify-center">
+              <Bookmark className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <h1 className="text-2xl font-bold font-display">Saved Articles</h1>
+          </div>
+          <p className="text-muted-foreground ml-13">
             {bookmarks.length} {bookmarks.length === 1 ? 'article' : 'articles'} saved
           </p>
         </div>
 
         {bookmarks.length === 0 ? (
-          <Card className="p-8 text-center">
-            <p className="text-muted-foreground mb-4">
-              You haven't bookmarked any articles yet.
+          <Card className="p-12 text-center glass border-0">
+            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+              <BookmarkX className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="font-semibold text-lg mb-2">No saved articles yet</h3>
+            <p className="text-muted-foreground mb-6">
+              Bookmark articles from your feed to read later
             </p>
-            <Button onClick={() => navigate('/')}>
+            <Button onClick={() => navigate('/')} variant="gradient">
               Browse Feed
             </Button>
           </Card>
@@ -126,22 +147,22 @@ const Bookmarks = () => {
             {bookmarks.map((bookmark) => (
               <Card 
                 key={bookmark.id} 
-                className="p-4 hover:shadow-elevated transition-shadow cursor-pointer animate-fade-in"
+                className="p-5 hover-lift cursor-pointer animate-fade-in border-0 shadow-card"
                 onClick={() => navigate(`/article/${bookmark.article_id}`)}
               >
-                <div className="flex items-start gap-3">
-                  <div className="flex-1">
+                <div className="flex items-start gap-4">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                      <span>{bookmark.article_source}</span>
-                      <span>•</span>
+                      <span className="font-medium">{bookmark.article_source}</span>
+                      <span className="text-muted-foreground/50">•</span>
                       <span>{new Date(bookmark.created_at).toLocaleDateString()}</span>
                     </div>
-                    <h3 className="font-semibold mb-2">{bookmark.article_title}</h3>
+                    <h3 className="font-semibold font-display mb-2 line-clamp-2">{bookmark.article_title}</h3>
                     <p className="text-sm text-muted-foreground line-clamp-2">
                       {bookmark.article_summary}
                     </p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1">
                     <Button
                       variant="ghost"
                       size="icon"
@@ -149,6 +170,7 @@ const Bookmarks = () => {
                         e.stopPropagation();
                         handleShare(bookmark);
                       }}
+                      className="hover:text-fintech-purple"
                     >
                       <Share2 className="w-4 h-4" />
                     </Button>
@@ -159,7 +181,7 @@ const Bookmarks = () => {
                         e.stopPropagation();
                         handleDelete(bookmark.id);
                       }}
-                      className="text-destructive hover:text-destructive"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>

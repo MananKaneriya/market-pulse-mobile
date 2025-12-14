@@ -8,119 +8,153 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 210 22% 15%;
+    --background: 220 20% 97%;
+    --foreground: 220 25% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 210 22% 15%;
+    --card-foreground: 220 25% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 22% 15%;
+    --popover-foreground: 220 25% 10%;
 
-    --primary: 210 100% 12%;
+    --primary: 220 90% 56%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 15% 96%;
-    --secondary-foreground: 210 22% 15%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 25% 10%;
 
-    --muted: 210 15% 96%;
-    --muted-foreground: 210 12% 45%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 10% 46%;
 
-    --accent: 180 65% 42%;
+    --accent: 162 72% 45%;
     --accent-foreground: 0 0% 100%;
 
-    --success: 142 71% 45%;
+    --success: 152 76% 42%;
     --success-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 15% 90%;
-    --input: 210 15% 90%;
-    --ring: 210 100% 12%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 220 90% 56%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
     
-    /* Fintech colors */
-    --fintech-blue: 217 91% 60%;
-    --fintech-green: 142 71% 45%;
+    /* Fintech colors - Enhanced */
+    --fintech-blue: 220 90% 56%;
+    --fintech-green: 162 72% 45%;
     --fintech-red: 0 84% 60%;
-    --fintech-gold: 45 93% 47%;
+    --fintech-gold: 38 92% 50%;
+    --fintech-purple: 262 83% 58%;
+    --fintech-cyan: 192 91% 48%;
     
-    /* Financial theme gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(210 100% 12%), hsl(210 90% 25%));
-    --gradient-accent: linear-gradient(135deg, hsl(180 65% 42%), hsl(195 80% 50%));
-    --gradient-success: linear-gradient(135deg, hsl(142 71% 45%), hsl(142 60% 55%));
+    /* Premium gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(220 90% 56%), hsl(262 83% 58%));
+    --gradient-accent: linear-gradient(135deg, hsl(162 72% 45%), hsl(192 91% 48%));
+    --gradient-success: linear-gradient(135deg, hsl(152 76% 42%), hsl(162 72% 45%));
+    --gradient-warm: linear-gradient(135deg, hsl(38 92% 50%), hsl(20 90% 55%));
+    --gradient-hero: linear-gradient(135deg, hsl(220 90% 56%) 0%, hsl(262 83% 58%) 50%, hsl(192 91% 48%) 100%);
+    --gradient-mesh: radial-gradient(at 40% 20%, hsl(220 90% 56% / 0.15) 0px, transparent 50%),
+                     radial-gradient(at 80% 0%, hsl(262 83% 58% / 0.1) 0px, transparent 50%),
+                     radial-gradient(at 0% 50%, hsl(162 72% 45% / 0.1) 0px, transparent 50%),
+                     radial-gradient(at 80% 50%, hsl(192 91% 48% / 0.1) 0px, transparent 50%),
+                     radial-gradient(at 0% 100%, hsl(38 92% 50% / 0.1) 0px, transparent 50%);
     
-    /* Shadows */
-    --shadow-card: 0 2px 8px hsla(210, 15%, 15%, 0.08);
-    --shadow-elevated: 0 8px 24px hsla(210, 15%, 15%, 0.12);
+    /* Enhanced shadows */
+    --shadow-xs: 0 1px 2px hsla(220, 25%, 10%, 0.04);
+    --shadow-sm: 0 2px 4px hsla(220, 25%, 10%, 0.06);
+    --shadow-card: 0 4px 16px hsla(220, 25%, 10%, 0.08);
+    --shadow-elevated: 0 12px 40px hsla(220, 25%, 10%, 0.12);
+    --shadow-glow: 0 0 40px hsla(220, 90%, 56%, 0.15);
+    --shadow-accent-glow: 0 0 30px hsla(162, 72%, 45%, 0.2);
+
+    /* Glass effect */
+    --glass-bg: hsla(0, 0%, 100%, 0.7);
+    --glass-border: hsla(220, 13%, 91%, 0.5);
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 220 90% 56%;
   }
 
   .dark {
-    --background: 210 30% 8%;
+    --background: 224 30% 7%;
     --foreground: 0 0% 95%;
 
-    --card: 210 30% 10%;
+    --card: 224 30% 10%;
     --card-foreground: 0 0% 95%;
 
-    --popover: 210 30% 10%;
+    --popover: 224 30% 10%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 180 65% 42%;
+    --primary: 220 90% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 25% 18%;
+    --secondary: 224 25% 14%;
     --secondary-foreground: 0 0% 95%;
 
-    --muted: 210 25% 18%;
-    --muted-foreground: 210 12% 65%;
+    --muted: 224 25% 14%;
+    --muted-foreground: 220 12% 60%;
 
-    --accent: 180 65% 42%;
+    --accent: 162 72% 48%;
     --accent-foreground: 0 0% 100%;
 
-    --success: 142 71% 45%;
+    --success: 152 76% 45%;
     --success-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 25% 18%;
-    --input: 210 25% 18%;
-    --ring: 180 65% 42%;
+    --border: 224 20% 16%;
+    --input: 224 20% 16%;
+    --ring: 162 72% 48%;
+    
+    /* Dark mode fintech colors */
+    --fintech-blue: 220 90% 60%;
+    --fintech-green: 162 72% 48%;
+    --fintech-red: 0 84% 60%;
+    --fintech-gold: 38 92% 50%;
+    --fintech-purple: 262 83% 62%;
+    --fintech-cyan: 192 91% 52%;
     
     /* Dark mode gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(210 30% 10%), hsl(210 40% 18%));
-    --gradient-accent: linear-gradient(135deg, hsl(180 65% 42%), hsl(195 80% 50%));
-    --gradient-success: linear-gradient(135deg, hsl(142 71% 45%), hsl(142 60% 55%));
+    --gradient-primary: linear-gradient(135deg, hsl(224 30% 10%), hsl(224 40% 16%));
+    --gradient-accent: linear-gradient(135deg, hsl(162 72% 48%), hsl(192 91% 52%));
+    --gradient-success: linear-gradient(135deg, hsl(152 76% 45%), hsl(162 72% 48%));
+    --gradient-warm: linear-gradient(135deg, hsl(38 92% 50%), hsl(20 90% 55%));
+    --gradient-hero: linear-gradient(135deg, hsl(220 90% 60%) 0%, hsl(262 83% 62%) 50%, hsl(192 91% 52%) 100%);
+    --gradient-mesh: radial-gradient(at 40% 20%, hsl(220 90% 60% / 0.12) 0px, transparent 50%),
+                     radial-gradient(at 80% 0%, hsl(262 83% 62% / 0.08) 0px, transparent 50%),
+                     radial-gradient(at 0% 50%, hsl(162 72% 48% / 0.08) 0px, transparent 50%),
+                     radial-gradient(at 80% 50%, hsl(192 91% 52% / 0.08) 0px, transparent 50%),
+                     radial-gradient(at 0% 100%, hsl(38 92% 50% / 0.08) 0px, transparent 50%);
     
     /* Dark shadows */
-    --shadow-card: 0 2px 8px hsla(0, 0%, 0%, 0.3);
-    --shadow-elevated: 0 8px 24px hsla(0, 0%, 0%, 0.4);
-    --sidebar-background: 240 5.9% 10%;
+    --shadow-xs: 0 1px 2px hsla(0, 0%, 0%, 0.2);
+    --shadow-sm: 0 2px 4px hsla(0, 0%, 0%, 0.25);
+    --shadow-card: 0 4px 16px hsla(0, 0%, 0%, 0.35);
+    --shadow-elevated: 0 12px 40px hsla(0, 0%, 0%, 0.5);
+    --shadow-glow: 0 0 40px hsla(220, 90%, 60%, 0.2);
+    --shadow-accent-glow: 0 0 30px hsla(162, 72%, 48%, 0.25);
+
+    /* Dark glass effect */
+    --glass-bg: hsla(224, 30%, 10%, 0.7);
+    --glass-border: hsla(224, 20%, 20%, 0.5);
+
+    --sidebar-background: 224 30% 8%;
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary: 220 90% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent: 224 25% 14%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-border: 224 20% 16%;
+    --sidebar-ring: 220 90% 60%;
   }
 }
 
@@ -129,7 +163,120 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv11", "ss01", "ss02";
+  }
+
+  /* Improved focus styles */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer utilities {
+  /* Glass morphism */
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid var(--glass-border);
+  }
+
+  .glass-subtle {
+    background: var(--glass-bg);
+    backdrop-filter: blur(8px) saturate(150%);
+    -webkit-backdrop-filter: blur(8px) saturate(150%);
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: var(--gradient-hero);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Mesh background */
+  .bg-mesh {
+    background-image: var(--gradient-mesh);
+  }
+
+  /* Shimmer effect for loading */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted-foreground) / 0.1) 50%,
+      hsl(var(--muted)) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  /* Pulse glow animation */
+  .pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px hsla(220, 90%, 56%, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 40px hsla(220, 90%, 56%, 0.5);
+    }
+  }
+
+  /* Float animation */
+  .float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  /* Hover lift effect */
+  .hover-lift {
+    @apply transition-all duration-300 ease-out;
+  }
+  .hover-lift:hover {
+    @apply -translate-y-1;
+    box-shadow: var(--shadow-elevated);
+  }
+
+  /* Interactive scale */
+  .interactive {
+    @apply transition-all duration-200 ease-out;
+  }
+  .interactive:hover {
+    @apply scale-[1.02];
+  }
+  .interactive:active {
+    @apply scale-[0.98];
+  }
+
+  /* Smooth transitions */
+  .transition-smooth {
+    @apply transition-all duration-300 ease-out;
   }
 }

@@ -142,7 +142,7 @@ const Sentiment = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-4 md:pt-20">
+    <div className="min-h-screen bg-background bg-mesh pb-20 md:pb-4 md:pt-20">
       <Navbar />
       
       <main className="container mx-auto px-4 py-6 max-w-4xl">
