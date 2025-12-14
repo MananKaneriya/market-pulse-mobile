@@ -93,7 +93,7 @@ const Analytics = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-0 md:pt-20">
+    <div className="min-h-screen bg-background bg-mesh pb-20 md:pb-0 md:pt-20">
       <Navbar />
       
       <div className="container mx-auto px-4 py-6">

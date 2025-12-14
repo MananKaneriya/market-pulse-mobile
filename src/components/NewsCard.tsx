@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
-import { Heart, MessageCircle, Share2, Bookmark, BookmarkCheck } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, BookmarkCheck, TrendingUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
 interface NewsCardProps {
   article: {
@@ -24,6 +25,7 @@ interface NewsCardProps {
 const NewsCard = ({ article, isBookmarked = false, onBookmarkChange }: NewsCardProps) => {
   const [liked, setLiked] = useState(false);
   const [bookmarked, setBookmarked] = useState(isBookmarked);
+  const [isLikeAnimating, setIsLikeAnimating] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -63,6 +65,12 @@ const NewsCard = ({ article, isBookmarked = false, onBookmarkChange }: NewsCardP
     }
   };
 
+  const handleLike = () => {
+    setIsLikeAnimating(true);
+    setLiked(!liked);
+    setTimeout(() => setIsLikeAnimating(false), 300);
+  };
+
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({
@@ -88,49 +96,75 @@ const NewsCard = ({ article, isBookmarked = false, onBookmarkChange }: NewsCardP
 
   return (
     <Card 
-      className="overflow-hidden shadow-card hover:shadow-elevated transition-shadow cursor-pointer animate-fade-in"
+      className="group overflow-hidden cursor-pointer animate-fade-in hover-lift border-0 shadow-card"
       onClick={() => navigate(`/article/${article.id}`)}
     >
+      {/* Image with overlay gradient */}
       {article.imageUrl && (
-        <img 
-          src={article.imageUrl} 
-          alt={article.title}
-          className="w-full h-48 object-cover"
-        />
+        <div className="relative overflow-hidden">
+          <img 
+            src={article.imageUrl} 
+            alt={article.title}
+            className="w-full h-52 object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent opacity-60" />
+        </div>
       )}
       
-      <div className="p-4">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-          <span className="px-2 py-1 rounded bg-accent/10 text-accent font-medium">
+      <div className="p-5">
+        {/* Stock tag and meta */}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gradient-hero text-primary-foreground font-semibold">
+            <TrendingUp className="w-3 h-3" />
             {article.stock}
           </span>
-          <span>{article.source}</span>
-          <span>•</span>
+          <span className="font-medium">{article.source}</span>
+          <span className="text-muted-foreground/50">•</span>
           <span>{timeAgo()}</span>
         </div>
 
-        <h3 className="font-semibold text-lg mb-2 line-clamp-2">{article.title}</h3>
-        <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
+        {/* Title */}
+        <h3 className="font-display font-bold text-lg mb-2.5 line-clamp-2 group-hover:text-primary transition-colors duration-200">
+          {article.title}
+        </h3>
+        
+        {/* Summary */}
+        <p className="text-sm text-muted-foreground line-clamp-3 mb-4 leading-relaxed">
           {article.summary}
         </p>
 
-        <div className="flex items-center justify-between pt-3 border-t border-border">
+        {/* Actions */}
+        <div className="flex items-center justify-between pt-4 border-t border-border/50">
           <Button
             variant="ghost"
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
-              setLiked(!liked);
+              handleLike();
             }}
-            className={liked ? 'text-red-500' : ''}
+            className={cn(
+              "gap-1.5 transition-all duration-200",
+              liked ? "text-fintech-red" : "hover:text-fintech-red"
+            )}
           >
-            <Heart className={`w-4 h-4 mr-1 ${liked ? 'fill-current' : ''}`} />
-            <span className="text-xs">Like</span>
+            <Heart 
+              className={cn(
+                "w-4 h-4 transition-transform duration-200",
+                liked && "fill-current",
+                isLikeAnimating && "scale-125"
+              )} 
+            />
+            <span className="text-xs font-medium">Like</span>
           </Button>
 
-          <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
-            <MessageCircle className="w-4 h-4 mr-1" />
-            <span className="text-xs">Comment</span>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={(e) => e.stopPropagation()}
+            className="gap-1.5 hover:text-fintech-blue"
+          >
+            <MessageCircle className="w-4 h-4" />
+            <span className="text-xs font-medium">Comment</span>
           </Button>
 
           <Button
@@ -140,9 +174,10 @@ const NewsCard = ({ article, isBookmarked = false, onBookmarkChange }: NewsCardP
               e.stopPropagation();
               handleShare();
             }}
+            className="gap-1.5 hover:text-fintech-purple"
           >
-            <Share2 className="w-4 h-4 mr-1" />
-            <span className="text-xs">Share</span>
+            <Share2 className="w-4 h-4" />
+            <span className="text-xs font-medium">Share</span>
           </Button>
 
           <Button
@@ -152,7 +187,10 @@ const NewsCard = ({ article, isBookmarked = false, onBookmarkChange }: NewsCardP
               e.stopPropagation();
               handleBookmark();
             }}
-            className={bookmarked ? 'text-accent' : ''}
+            className={cn(
+              "transition-all duration-200",
+              bookmarked ? "text-fintech-gold" : "hover:text-fintech-gold"
+            )}
           >
             {bookmarked ? (
               <BookmarkCheck className="w-4 h-4 fill-current" />
