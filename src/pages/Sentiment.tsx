@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import FeedbackWidget from '@/components/FeedbackWidget';
@@ -16,6 +16,86 @@ interface SentimentResult {
   confidence: number;
 }
 
+type OverallSentimentLabel = 'Bullish' | 'Moderately Bullish' | 'Neutral' | 'Bearish';
+
+type StockSentimentPreset = {
+  positive: number;
+  neutral: number;
+  negative: number;
+  overall: OverallSentimentLabel;
+};
+
+const STOCK_SENTIMENT_PRESETS: Record<string, StockSentimentPreset> = {
+  RELIANCE: { positive: 68, neutral: 4, negative: 28, overall: 'Bullish' },
+  TCS: { positive: 55, neutral: 15, negative: 30, overall: 'Moderately Bullish' },
+  INFY: { positive: 42, neutral: 18, negative: 40, overall: 'Neutral' },
+  HDFCBANK: { positive: 36, neutral: 14, negative: 50, overall: 'Bearish' },
+  ICICIBANK: { positive: 61, neutral: 9, negative: 30, overall: 'Bullish' },
+};
+
+const clampInt = (n: number, min: number, max: number) => Math.min(max, Math.max(min, Math.round(n)));
+
+const normalizeStockKey = (raw: string) =>
+  raw
+    .toUpperCase()
+    .trim()
+    .replace(/\.NS$/i, '')
+    .replace(/[^A-Z0-9]/g, '');
+
+const hashString = (str: string) => {
+  // fast deterministic hash (djb2 variant)
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 33) ^ str.charCodeAt(i);
+  }
+  return Math.abs(hash) >>> 0;
+};
+
+const deterministicSentimentFromKey = (key: string): StockSentimentPreset => {
+  const h = hashString(key);
+
+  // Deterministic but non-random-on-rerender: derived only from key
+  let positive = 30 + (h % 41); // 30..70
+  let neutral = 5 + (Math.floor(h / 41) % 21); // 5..25
+  let negative = 100 - positive - neutral;
+
+  // Ensure minimum bounds while keeping sum == 100
+  if (negative < 5) {
+    const deficit = 5 - negative;
+    negative = 5;
+    // take from neutral first, then positive
+    const takeFromNeutral = Math.min(deficit, Math.max(0, neutral - 5));
+    neutral -= takeFromNeutral;
+    positive -= deficit - takeFromNeutral;
+  }
+
+  positive = clampInt(positive, 10, 80);
+  neutral = clampInt(neutral, 0, 40);
+  negative = 100 - positive - neutral;
+
+  // Final guard to ensure exact 100
+  if (negative < 0) {
+    neutral = clampInt(neutral + negative, 0, 40);
+    negative = 100 - positive - neutral;
+  }
+
+  const overall: OverallSentimentLabel =
+    negative >= 50
+      ? 'Bearish'
+      : positive >= 60
+        ? 'Bullish'
+        : positive >= 50
+          ? 'Moderately Bullish'
+          : 'Neutral';
+
+  return { positive, neutral, negative, overall };
+};
+
+const getStockSentiment = (stockSymbolOrName: string): StockSentimentPreset => {
+  const key = normalizeStockKey(stockSymbolOrName);
+  return STOCK_SENTIMENT_PRESETS[key] ?? deterministicSentimentFromKey(key);
+};
+
 const Sentiment = () => {
   const { user, loading } = useAuth();
   const { toast } = useToast();
@@ -24,6 +104,18 @@ const Sentiment = () => {
   const [sentimentResults, setSentimentResults] = useState<SentimentResult[]>([]);
   const [analyzingTweets, setAnalyzingTweets] = useState(false);
   const navigate = useNavigate();
+
+  const stockKey = useMemo(() => normalizeStockKey(selectedStock), [selectedStock]);
+
+  const tweets = useMemo(() => {
+    const filtered = DUMMY_TWEETS.filter((t) => t.text.toUpperCase().includes(`#${stockKey}`));
+    return filtered.length > 0 ? filtered : DUMMY_TWEETS;
+  }, [stockKey]);
+
+  // Stable, stock-specific sentiment mapping (no random regeneration on re-render)
+  const stockSentiment = useMemo(() => getStockSentiment(selectedStock), [selectedStock]);
+  const displaySentiment = stockSentiment;
+  const overallSentiment = stockSentiment.overall;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -55,7 +147,11 @@ const Sentiment = () => {
     setAnalyzingTweets(true);
     try {
       const tweetTexts = tweets.map(t => t.text);
-      
+      if (tweetTexts.length === 0) {
+        setSentimentResults([]);
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('analyze-sentiment', {
         body: { texts: tweetTexts }
       });
@@ -69,7 +165,7 @@ const Sentiment = () => {
       console.error('Error analyzing sentiment:', error);
       toast({
         title: 'Sentiment analysis failed',
-        description: 'Could not analyze tweets. Using placeholder data.',
+        description: 'Could not analyze tweets. Showing mapped sentiment data.',
         variant: 'destructive',
       });
     } finally {
@@ -77,41 +173,16 @@ const Sentiment = () => {
     }
   };
 
+  // Clear old per-tweet results when switching stocks (prevents mismatched indexing)
+  useEffect(() => {
+    setSentimentResults([]);
+  }, [selectedStock]);
+
   useEffect(() => {
     if (user) {
       analyzeSentiment();
     }
   }, [selectedStock, user]);
-
-  const tweets = DUMMY_TWEETS;
-
-  // Generate randomized sentiment percentages for each stock
-  const generateRandomSentiment = (stockSymbol: string) => {
-    // Use stock symbol as seed for consistent but unique percentages per stock
-    const seed = stockSymbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const random = (n: number) => {
-      const x = Math.sin(seed + n) * 10000;
-      return x - Math.floor(x);
-    };
-
-    const positive = Math.floor(random(1) * 70) + 10; // 10-80%
-    const remaining = 100 - positive;
-    const neutral = Math.floor(random(2) * remaining);
-    const negative = 100 - positive - neutral;
-
-    return { positive, neutral, negative };
-  };
-
-  const sentimentData = generateRandomSentiment(selectedStock);
-
-  // Calculate sentiment percentages from AI results when available
-  const aiSentimentData = sentimentResults.length > 0 
-    ? {
-        positive: Math.round((sentimentResults.filter(r => r.sentiment === 'positive').length / sentimentResults.length) * 100),
-        neutral: Math.round((sentimentResults.filter(r => r.sentiment === 'neutral').length / sentimentResults.length) * 100),
-        negative: Math.round((sentimentResults.filter(r => r.sentiment === 'negative').length / sentimentResults.length) * 100),
-      }
-    : sentimentData;
 
   const getSentimentColor = (sentiment: 'positive' | 'neutral' | 'negative') => {
     switch (sentiment) {
@@ -128,10 +199,6 @@ const Sentiment = () => {
       default: return <Minus className="w-4 h-4" />;
     }
   };
-
-  const displaySentiment = sentimentResults.length > 0 ? aiSentimentData : sentimentData;
-  const overallSentiment = displaySentiment.positive > displaySentiment.negative && displaySentiment.positive > displaySentiment.neutral ? 'Bullish' : 
-                          displaySentiment.negative > displaySentiment.positive && displaySentiment.negative > displaySentiment.neutral ? 'Bearish' : 'Neutral';
 
   if (loading) {
     return (
