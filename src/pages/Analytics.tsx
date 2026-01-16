@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend, Area, AreaChart, ComposedChart } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Activity, BarChart3, PieChartIcon, LineChartIcon, Zap } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Activity, BarChart3, PieChartIcon, LineChartIcon, Zap, Filter, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
 import { INDIAN_STOCKS, FUNDAMENTAL_DATA, IndianStockCompany } from '@/lib/dummyData';
 import Navbar from '@/components/Navbar';
 import FeedbackWidget from '@/components/FeedbackWidget';
@@ -166,6 +168,8 @@ const Analytics = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [selectedStocks, setSelectedStocks] = useState<string[]>([]);
+  const [visibleStocks, setVisibleStocks] = useState<string[]>([]);
+  const [isFilterExpanded, setIsFilterExpanded] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -188,18 +192,46 @@ const Analytics = () => {
       .eq('user_id', user.id);
 
     if (data && data.length > 0) {
-      setSelectedStocks(data.map(d => d.stock_symbol));
+      const stocks = data.map(d => d.stock_symbol);
+      setSelectedStocks(stocks);
+      setVisibleStocks(stocks); // Initially all stocks are visible
     } else {
       // Default stocks if none selected
-      setSelectedStocks(['RELIANCE', 'TCS', 'HDFCBANK']);
+      const defaultStocks = ['RELIANCE', 'TCS', 'HDFCBANK'];
+      setSelectedStocks(defaultStocks);
+      setVisibleStocks(defaultStocks);
     }
   };
 
-  // Compute aggregated metrics
-  const aggregatedMetrics = useMemo(() => {
-    if (selectedStocks.length === 0) return null;
+  // Toggle a stock's visibility in charts
+  const toggleStockVisibility = useCallback((symbol: string) => {
+    setVisibleStocks(prev => {
+      if (prev.includes(symbol)) {
+        // Don't allow removing all stocks
+        if (prev.length === 1) return prev;
+        return prev.filter(s => s !== symbol);
+      }
+      return [...prev, symbol];
+    });
+  }, []);
 
-    const stocksData = selectedStocks.map(symbol => ({
+  // Select all stocks
+  const selectAllStocks = useCallback(() => {
+    setVisibleStocks(selectedStocks);
+  }, [selectedStocks]);
+
+  // Clear to single stock (keep first one)
+  const selectSingleStock = useCallback(() => {
+    if (selectedStocks.length > 0) {
+      setVisibleStocks([selectedStocks[0]]);
+    }
+  }, [selectedStocks]);
+
+  // Compute aggregated metrics - based on VISIBLE stocks
+  const aggregatedMetrics = useMemo(() => {
+    if (visibleStocks.length === 0) return null;
+
+    const stocksData = visibleStocks.map(symbol => ({
       symbol,
       ...getStockData(symbol),
       info: INDIAN_STOCKS.find(s => s.symbol === symbol),
@@ -217,27 +249,27 @@ const Analytics = () => {
       avgRSI,
       stocksData,
     };
-  }, [selectedStocks]);
+  }, [visibleStocks]);
 
-  // Combined price chart data
+  // Combined price chart data - based on VISIBLE stocks
   const combinedPriceData = useMemo(() => {
-    if (selectedStocks.length === 0) return [];
+    if (visibleStocks.length === 0) return [];
 
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May'];
     return months.map((month, idx) => {
       const entry: Record<string, any> = { name: month };
-      selectedStocks.forEach(symbol => {
+      visibleStocks.forEach(symbol => {
         const data = getStockData(symbol);
         entry[symbol] = data.priceData[idx]?.price || 0;
         entry[`${symbol}_volume`] = data.priceData[idx]?.volume || 0;
       });
       return entry;
     });
-  }, [selectedStocks]);
+  }, [visibleStocks]);
 
-  // Portfolio performance data
+  // Portfolio performance data - based on VISIBLE stocks
   const portfolioData = useMemo(() => {
-    return selectedStocks.map((symbol, idx) => {
+    return visibleStocks.map((symbol, idx) => {
       const data = getStockData(symbol);
       const stock = INDIAN_STOCKS.find(s => s.symbol === symbol);
       return {
@@ -248,34 +280,34 @@ const Analytics = () => {
         fill: CHART_COLORS[idx % CHART_COLORS.length],
       };
     });
-  }, [selectedStocks]);
+  }, [visibleStocks]);
 
-  // Sector allocation data
+  // Sector allocation data - based on VISIBLE stocks
   const sectorData = useMemo(() => {
     const sectorMap: Record<string, number> = {};
-    selectedStocks.forEach(symbol => {
+    visibleStocks.forEach(symbol => {
       const stock = INDIAN_STOCKS.find(s => s.symbol === symbol);
       if (stock) {
         sectorMap[stock.sector] = (sectorMap[stock.sector] || 0) + 1;
       }
     });
 
-    const total = selectedStocks.length;
+    const total = visibleStocks.length;
     return Object.entries(sectorMap).map(([sector, count]) => ({
       name: sector,
       value: Math.round((count / total) * 100),
       color: SECTOR_COLORS[sector] || 'hsl(220, 10%, 50%)',
     }));
-  }, [selectedStocks]);
+  }, [visibleStocks]);
 
-  // Sentiment trend data
+  // Sentiment trend data - based on VISIBLE stocks
   const sentimentTrendData = useMemo(() => {
-    if (selectedStocks.length === 0) return [];
+    if (visibleStocks.length === 0) return [];
 
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
     return days.map((day, idx) => {
       let positive = 0, neutral = 0, negative = 0;
-      selectedStocks.forEach(symbol => {
+      visibleStocks.forEach(symbol => {
         const data = getStockData(symbol);
         if (data.sentiment[idx]) {
           positive += data.sentiment[idx].positive;
@@ -283,7 +315,7 @@ const Analytics = () => {
           negative += data.sentiment[idx].negative;
         }
       });
-      const count = selectedStocks.length;
+      const count = visibleStocks.length;
       return {
         name: day,
         positive: Math.round(positive / count),
@@ -291,7 +323,7 @@ const Analytics = () => {
         negative: Math.round(negative / count),
       };
     });
-  }, [selectedStocks]);
+  }, [visibleStocks]);
 
   if (loading) {
     return (
@@ -309,47 +341,126 @@ const Analytics = () => {
       
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text">
               Market Analytics
             </h1>
-            <Badge variant="outline" className="text-sm px-3 py-1">
-              {selectedStocks.length} {selectedStocks.length === 1 ? 'Stock' : 'Stocks'} Selected
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-sm px-3 py-1">
+                {visibleStocks.length}/{selectedStocks.length} Stocks Visible
+              </Badge>
+            </div>
           </div>
           <p className="text-muted-foreground">
-            {selectedStocks.length > 1 
-              ? 'Comparative analysis across your portfolio'
-              : selectedStocks.length === 1 
-                ? `Detailed analysis for ${INDIAN_STOCKS.find(s => s.symbol === selectedStocks[0])?.name || selectedStocks[0]}`
+            {visibleStocks.length > 1 
+              ? 'Comparative analysis across selected stocks'
+              : visibleStocks.length === 1 
+                ? `Detailed analysis for ${INDIAN_STOCKS.find(s => s.symbol === visibleStocks[0])?.name || visibleStocks[0]}`
                 : 'Select stocks to view analytics'}
           </p>
         </div>
 
-        {/* Selected Stocks Pills */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          {selectedStocks.map((symbol, idx) => {
-            const stock = INDIAN_STOCKS.find(s => s.symbol === symbol);
-            const data = getStockData(symbol);
-            const isPositive = data.metrics.dayChange >= 0;
-            return (
-              <div 
-                key={symbol}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border shadow-sm"
-              >
-                <div 
-                  className="w-2 h-2 rounded-full" 
-                  style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
-                />
-                <span className="font-medium text-sm">{symbol}</span>
-                <span className={`text-xs font-medium ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
-                  {isPositive ? '+' : ''}{data.metrics.dayChange.toFixed(2)}%
-                </span>
+        {/* Stock Filter Controls */}
+        <Card className="glass mb-6">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Filter className="h-5 w-5 text-accent" />
+                <CardTitle className="text-lg">Stock Filter</CardTitle>
+                <Badge variant="secondary" className="ml-2">
+                  {visibleStocks.length} selected
+                </Badge>
               </div>
-            );
-          })}
-        </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={selectAllStocks}
+                  disabled={visibleStocks.length === selectedStocks.length}
+                  className="text-xs"
+                >
+                  <Eye className="h-3.5 w-3.5 mr-1" />
+                  Show All
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={selectSingleStock}
+                  disabled={visibleStocks.length === 1}
+                  className="text-xs"
+                >
+                  <EyeOff className="h-3.5 w-3.5 mr-1" />
+                  Single Stock
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+                  className="ml-2"
+                >
+                  {isFilterExpanded ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+            <CardDescription>
+              Toggle individual stocks to customize your comparison view
+            </CardDescription>
+          </CardHeader>
+          {isFilterExpanded && (
+            <CardContent className="pt-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                {selectedStocks.map((symbol, idx) => {
+                  const stock = INDIAN_STOCKS.find(s => s.symbol === symbol);
+                  const data = getStockData(symbol);
+                  const isPositive = data.metrics.dayChange >= 0;
+                  const isVisible = visibleStocks.includes(symbol);
+                  
+                  return (
+                    <div 
+                      key={symbol}
+                      onClick={() => toggleStockVisibility(symbol)}
+                      className={`
+                        flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200
+                        ${isVisible 
+                          ? 'bg-card border-accent/50 shadow-sm' 
+                          : 'bg-muted/30 border-border/50 opacity-60 hover:opacity-80'
+                        }
+                      `}
+                    >
+                      <Checkbox 
+                        checked={isVisible}
+                        onCheckedChange={() => toggleStockVisibility(symbol)}
+                        className="data-[state=checked]:bg-accent data-[state=checked]:border-accent"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-2 h-2 rounded-full flex-shrink-0" 
+                            style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
+                          />
+                          <span className="font-medium text-sm truncate">{symbol}</span>
+                        </div>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="text-xs text-muted-foreground truncate">
+                            {stock?.name?.split(' ')[0] || symbol}
+                          </span>
+                          <span className={`text-xs font-medium ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+                            {isPositive ? '+' : ''}{data.metrics.dayChange.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          )}
+        </Card>
 
         {/* Key Metrics */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -360,7 +471,7 @@ const Analytics = () => {
                   <DollarSign className="h-5 w-5 text-accent" />
                 </div>
                 <span className="text-sm font-medium text-muted-foreground">
-                  {selectedStocks.length > 1 ? 'Avg Price' : 'Current Price'}
+                  {visibleStocks.length > 1 ? 'Avg Price' : 'Current Price'}
                 </span>
               </div>
               <p className="text-2xl font-bold">
@@ -380,7 +491,7 @@ const Analytics = () => {
                   )}
                 </div>
                 <span className="text-sm font-medium text-muted-foreground">
-                  {selectedStocks.length > 1 ? 'Avg Change' : 'Day Change'}
+                  {visibleStocks.length > 1 ? 'Avg Change' : 'Day Change'}
                 </span>
               </div>
               <p className={`text-2xl font-bold ${isPortfolioPositive ? 'text-green-500' : 'text-red-500'}`}>
@@ -396,7 +507,7 @@ const Analytics = () => {
                   <Activity className="h-5 w-5 text-primary" />
                 </div>
                 <span className="text-sm font-medium text-muted-foreground">
-                  {selectedStocks.length > 1 ? 'Avg Volatility' : 'Volatility'}
+                  {visibleStocks.length > 1 ? 'Avg Volatility' : 'Volatility'}
                 </span>
               </div>
               <p className="text-2xl font-bold">
@@ -412,7 +523,7 @@ const Analytics = () => {
                   <Zap className="h-5 w-5 text-amber-500" />
                 </div>
                 <span className="text-sm font-medium text-muted-foreground">
-                  {selectedStocks.length > 1 ? 'Avg RSI' : 'RSI'}
+                  {visibleStocks.length > 1 ? 'Avg RSI' : 'RSI'}
                 </span>
               </div>
               <p className="text-2xl font-bold">
@@ -451,9 +562,9 @@ const Analytics = () => {
                   Price Movement
                 </CardTitle>
                 <CardDescription>
-                  {selectedStocks.length > 1 
+                  {visibleStocks.length > 1 
                     ? 'Comparative price trends across selected stocks'
-                    : `Price trend for ${selectedStocks[0] || 'selected stock'}`}
+                    : `Price trend for ${visibleStocks[0] || 'selected stock'}`}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -481,7 +592,7 @@ const Analytics = () => {
                         formatter={(value: number) => [`₹${value.toFixed(2)}`, '']}
                       />
                       <Legend />
-                      {selectedStocks.map((symbol, idx) => (
+                      {visibleStocks.map((symbol, idx) => (
                         <Line 
                           key={symbol}
                           type="monotone" 
@@ -530,7 +641,7 @@ const Analytics = () => {
                         }}
                       />
                       <Legend />
-                      {selectedStocks.map((symbol, idx) => (
+                      {visibleStocks.map((symbol, idx) => (
                         <Bar 
                           key={symbol}
                           dataKey={`${symbol}_volume`}
@@ -667,7 +778,7 @@ const Analytics = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {selectedStocks.map((symbol, idx) => {
+                      {visibleStocks.map((symbol, idx) => {
                         const data = getStockData(symbol);
                         const stock = INDIAN_STOCKS.find(s => s.symbol === symbol);
                         const isPositive = data.metrics.dayChange >= 0;
